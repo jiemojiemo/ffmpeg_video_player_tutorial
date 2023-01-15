@@ -10,6 +10,8 @@ if (ENABLE_ASAN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 endif ()
 
+add_subdirectory(utils)
+
 add_subdirectory(tutorial01)
 
 
