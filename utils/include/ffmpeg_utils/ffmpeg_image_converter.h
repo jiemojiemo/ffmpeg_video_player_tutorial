@@ -5,18 +5,7 @@
 #ifndef FFMPEG_AND_SDL_TUTORIAL_FFMPEG_IMAGE_CONVERTER_H
 #define FFMPEG_AND_SDL_TUTORIAL_FFMPEG_IMAGE_CONVERTER_H
 #pragma once
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <libavformat/avformat.h>
-#include <libavutil/imgutils.h>
-#include <libswscale/swscale.h>
-
-#ifdef __cplusplus
-}
-#endif
+#include "ffmpeg_utils/ffmpeg_headers.h"
 #include <utility>
 
 namespace ffmpeg_utils {
