@@ -7,7 +7,7 @@
 #pragma once
 #include "ffmpeg_utils/ffmpeg_common_utils.h"
 #include "ffmpeg_utils/ffmpeg_headers.h"
-
+#include <string>
 namespace ffmpeg_utils {
 class FFMPEGDemuxer {
 public:
@@ -41,6 +41,17 @@ public:
   }
 
   bool isValid() const { return format_ctx_ != nullptr; }
+
+  void dumpFormat() const
+  {
+    if(isValid()){
+      av_dump_format(format_ctx_, 0, format_ctx_->url, 0);
+    }
+  }
+
+  AVFormatContext* getFormatContext() const{
+    return format_ctx_;
+  }
 
   int getStreamCount() const {
     if (isValid()) {

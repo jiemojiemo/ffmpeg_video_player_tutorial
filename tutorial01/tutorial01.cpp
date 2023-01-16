@@ -19,10 +19,18 @@
  **/
 
 #include <stdio.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
+#ifdef __cplusplus
+}
+#endif
+
 
 void printHelpMenu();
 void saveFrame(AVFrame * avFrame, int width, int height, int frameIndex);
