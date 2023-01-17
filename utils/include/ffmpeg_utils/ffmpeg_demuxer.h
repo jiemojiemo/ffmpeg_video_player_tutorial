@@ -37,6 +37,11 @@ public:
     }
 
     int ret = av_read_frame(format_ctx_, packet_);
+
+    if(ret != 0){
+      av_packet_unref(packet_);
+    }
+
     return {ret, packet_};
   }
 
@@ -85,7 +90,7 @@ private:
   }
 
   int findFirstStreamIndex(AVMediaType target_type) {
-    for (int i = 0; i < format_ctx_->nb_streams; ++i) {
+    for (auto i = 0u; i < format_ctx_->nb_streams; ++i) {
       if (format_ctx_->streams[i]->codecpar->codec_type == target_type) {
         return i;
       }

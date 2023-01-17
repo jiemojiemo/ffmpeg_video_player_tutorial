@@ -15,8 +15,5 @@ endif ()
 
 
 add_subdirectory(utils)
-
 add_subdirectory(tutorial01)
-
-
 add_subdirectory(tests)

@@ -4,6 +4,7 @@
 #include "ffmpeg_utils/ffmpeg_headers.h"
 #include "ffmpeg_utils/ffmpeg_demuxer.h"
 #include "ffmpeg_utils/ffmpeg_image_converter.h"
+#include "ffmpeg_utils/ffmpeg_codec.h"
 
 #include <stdio.h>
 
@@ -40,78 +41,20 @@ int main(int argc, char * argv[])
     return -1;
   }
 
-
-  // The stream's information about the codec is in what we call the
-  // "codec context." This contains all the information about the codec that
-  // the stream is using
-  AVCodecContext * pCodecCtx = NULL;
-  /**
-     * New API.
-     * This implementation uses the new API.
-     * Please refer to tutorial01-deprecated.c for an implementation using the
-     * deprecated FFmpeg API.
-   */
-
-  // Get a pointer to the codec context for the video stream.
-  // AVStream::codec deprecated
-  // https://ffmpeg.org/pipermail/libav-user/2016-October/009801.html
-  // pCodecCtxOrig = pFormatCtx->streams[videoStream]->codec;
-
-  // But we still have to find the actual codec and open it:
-  AVCodec * pCodec = NULL;
-
-  // Find the decoder for the video stream
-  pCodec = avcodec_find_decoder(demuxer.getFormatContext()->streams[videoStream]->codecpar->codec_id); // [6]
-  if (pCodec == NULL)
-  {
-    // codec not found
-    printf("Unsupported codec!\n");
-
-    // exit with error
-    return -1;
-  }
-
-  /**
-     * Note that we must not use the AVCodecContext from the video stream
-     * directly! So we have to use avcodec_copy_context() to copy the
-     * context to a new location (after allocating memory for it, of
-     * course).
-   */
-
-  // Copy context
-  // avcodec_copy_context deprecation
-  // http://ffmpeg.org/pipermail/libav-user/2017-September/010615.html
-  //ret = avcodec_copy_context(pCodecCtx, pCodecCtxOrig);
-  pCodecCtx = avcodec_alloc_context3(pCodec); // [7]
-  ret = avcodec_parameters_to_context(pCodecCtx, demuxer.getFormatContext()->streams[videoStream]->codecpar);
-  if (ret != 0)
-  {
-    // error copying codec context
-    printf("Could not copy codec context.\n");
-
-    // exit with error
-    return -1;
-  }
-
-  // Open codec
-  ret = avcodec_open2(pCodecCtx, pCodec, NULL);   // [8]
-  if (ret < 0)
-  {
-    // Could not open codec
-    printf("Could not open codec.\n");
-
-    // exit with error
-    return -1;
-  }
+  FFMEPGCodec video_codec;
+  auto codec_id = demuxer.getFormatContext()->streams[videoStream]->codecpar->codec_id;
+  auto par = demuxer.getFormatContext()->streams[videoStream]->codecpar;
+  video_codec.prepare(codec_id, par);
 
   auto dst_format = AVPixelFormat::AV_PIX_FMT_RGB24;
+  auto codec_context = video_codec.getCodecContext();
   FFMPEGImageConverter img_conv;
   img_conv.prepare(
-      pCodecCtx->width,
-      pCodecCtx->height,
-      pCodecCtx->pix_fmt,
-      pCodecCtx->width,
-      pCodecCtx->height,
+      codec_context->width,
+      codec_context->height,
+      codec_context->pix_fmt,
+      codec_context->width,
+      codec_context->height,
       dst_format,
       SWS_BILINEAR,
       nullptr,
@@ -150,9 +93,10 @@ int main(int argc, char * argv[])
     std::tie(ret, packet) = demuxer.readPacket();
     if(packet->stream_index == videoStream)
     {
-      ret = avcodec_send_packet(pCodecCtx, packet);    // [15]
+      ret = video_codec.sendPacketToCodec(packet);
       if (ret < 0)
       {
+        av_packet_unref(packet);
         printf("Error sending packet for decoding %s.\n", av_err2str(ret));
         return -1;
       }
@@ -161,8 +105,7 @@ int main(int argc, char * argv[])
 
     while (ret >= 0)
     {
-      ret = avcodec_receive_frame(pCodecCtx, pFrame);   // [15]
-
+      ret = video_codec.receiveFrame(pFrame);
       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
       {
         // EOF exit loop
@@ -185,22 +128,22 @@ int main(int argc, char * argv[])
       if (++i <= maxFramesToDecode)
       {
         // save the read AVFrame into ppm file
-        saveFrame(pFrameRGB, pCodecCtx->width, pCodecCtx->height, i);
+        saveFrame(pFrameRGB, codec_context->width, codec_context->height, i);
 
         // print log information
         printf(
-            "Frame %c (%d) pts %d dts %d key_frame %d "
+            "Frame %c (%d) pts %lld dts %lld key_frame %d "
             "[coded_picture_number %d, display_picture_number %d,"
             " %dx%d]\n",
             av_get_picture_type_char(pFrame->pict_type),
-            pCodecCtx->frame_number,
+            codec_context->frame_number,
             pFrameRGB->pts,
             pFrameRGB->pkt_dts,
             pFrameRGB->key_frame,
             pFrameRGB->coded_picture_number,
             pFrameRGB->display_picture_number,
-            pCodecCtx->width,
-            pCodecCtx->height
+            codec_context->width,
+            codec_context->height
         );
       }
       else
@@ -214,9 +157,6 @@ int main(int argc, char * argv[])
   // Free the YUV frame
   av_frame_unref(pFrame);
   av_frame_free(&pFrame);
-
-  // Close the codecs
-  avcodec_close(pCodecCtx);
 
   return 0;
 }
@@ -256,7 +196,7 @@ void saveFrame(AVFrame *avFrame, int width, int height, int frameIndex)
    */
 
   // Open file
-  sprintf(szFilename, "frame%d.ppm", frameIndex);
+  snprintf(szFilename, 32, "frame%d.ppm", frameIndex);
   pFile = fopen(szFilename, "wb");
   if (pFile == NULL)
   {
