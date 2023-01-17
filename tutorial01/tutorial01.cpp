@@ -375,7 +375,7 @@ int main(int argc, char * argv[])
 
                     // print log information
                     printf(
-                        "Frame %c (%d) pts %d dts %d key_frame %d "
+                        "Frame %c (%d) pts %ld dts %ld key_frame %d "
 			"[coded_picture_number %d, display_picture_number %d,"
 			" %dx%d]\n",
                         av_get_picture_type_char(pFrame->pict_type),

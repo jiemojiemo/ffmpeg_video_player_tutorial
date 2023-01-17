@@ -106,7 +106,7 @@ int main(int argc, char * argv[])
     while (ret >= 0)
     {
       ret = video_codec.receiveFrame(pFrame);
-      if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+      if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF || ret == AVERROR(EAGAIN))
       {
         // EOF exit loop
         av_frame_unref(pFrame);

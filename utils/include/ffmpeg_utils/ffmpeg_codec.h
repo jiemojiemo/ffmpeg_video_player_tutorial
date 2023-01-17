@@ -48,12 +48,7 @@ public:
 
   int receiveFrame(AVFrame* frame)
   {
-    int ret = avcodec_receive_frame(codec_context_, frame);
-    if(ret < 0){
-      printf("Error receive frame %s.\n", av_err2str(ret));
-      return ret;
-    }
-    return ret;
+    return avcodec_receive_frame(codec_context_, frame);
   }
 
   const AVCodec *getCodec() const { return codec_; }
