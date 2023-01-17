@@ -67,6 +67,10 @@ public:
 
   int getVideoStreamIndex() const { return video_stream_index_; }
 
+  AVStream* getVideoStream(int stream_index) const{
+    return format_ctx_->streams[stream_index];
+  }
+
   int getAudioStreamIndex() const { return audio_stream_index_; }
 
 private:
