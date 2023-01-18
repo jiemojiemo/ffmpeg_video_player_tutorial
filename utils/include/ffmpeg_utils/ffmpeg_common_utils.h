@@ -10,4 +10,10 @@
     return (ret);                                                              \
   }
 
+#define RETURN_IF_ERROR_LOG(ret, ...)                                          \
+  if ((ret) < 0) {                                                             \
+    printf(__VA_ARGS__);                                                       \
+    return (ret);                                                              \
+  }
+
 #endif // FFMPEG_VIDEO_PLAYER_FFMPEG_COMMON_UTILS_H

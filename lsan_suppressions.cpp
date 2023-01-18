@@ -6,5 +6,6 @@
 // add suppressions to avoid error detections
 extern "C" const char *__lsan_default_suppressions() {
   return "leak:cache_t\n"
-         "leak:realizeClassWithoutSwift";
+         "leak:realizeClassWithoutSwift\n"
+         "leak:*CFTSDGetTable";
 }

@@ -4,16 +4,13 @@
 
 #ifndef FFMPEG_VIDEO_PLAYER_FFMPEG_CODEC_H
 #define FFMPEG_VIDEO_PLAYER_FFMPEG_CODEC_H
-#include "ffmpeg_utils/ffmpeg_headers.h"
 #include "ffmpeg_utils/ffmpeg_common_utils.h"
+#include "ffmpeg_utils/ffmpeg_headers.h"
 
 namespace ffmpeg_utils {
 class FFMEPGCodec {
 public:
-  ~FFMEPGCodec()
-  {
-    close();
-  }
+  ~FFMEPGCodec() { close(); }
 
   int prepare(enum AVCodecID id, const AVCodecParameters *par) {
     codec_ = avcodec_find_decoder(id);
@@ -22,12 +19,12 @@ public:
     }
 
     codec_context_ = avcodec_alloc_context3(codec_);
-    if(codec_context_ == nullptr){
+    if (codec_context_ == nullptr) {
       return -1;
     }
 
     int ret = 0;
-    if(par){
+    if (par) {
       ret = avcodec_parameters_to_context(codec_context_, par);
       RETURN_IF_ERROR(ret);
     }
@@ -36,27 +33,27 @@ public:
     return ret;
   }
 
-  int sendPacketToCodec(AVPacket* packet)
-  {
+  int sendPacketToCodec(AVPacket *packet) {
     int ret = avcodec_send_packet(codec_context_, packet);
-    if(ret < 0){
+    if (ret < 0) {
       printf("Error sending packet for decoding %s.\n", av_err2str(ret));
       return ret;
     }
     return 0;
   }
 
-  int receiveFrame(AVFrame* frame)
-  {
+  int receiveFrame(AVFrame *frame) {
     return avcodec_receive_frame(codec_context_, frame);
   }
 
   const AVCodec *getCodec() const { return codec_; }
+  AVCodec *getCodec() { return codec_; }
   const AVCodecContext *getCodecContext() const { return codec_context_; }
+  AVCodecContext *getCodecContext() { return codec_context_; }
 
 private:
-  void close(){
-    if(codec_context_ != nullptr){
+  void close() {
+    if (codec_context_ != nullptr) {
       avcodec_free_context(&codec_context_);
     }
   }
@@ -64,6 +61,5 @@ private:
   AVCodecContext *codec_context_{nullptr};
 };
 } // namespace ffmpeg_utils
-
 
 #endif // FFMPEG_VIDEO_PLAYER_FFMPEG_CODEC_H

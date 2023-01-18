@@ -11,7 +11,10 @@ extern "C" {
 
 #include <libavformat/avformat.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/opt.h>
+#include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
+
 #ifdef __cplusplus
 }
 #endif

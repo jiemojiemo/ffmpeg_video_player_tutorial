@@ -21,7 +21,7 @@ public:
   }
 
   int onInit(int video_width, int video_height) {
-    int ret = SDL_Init(SDL_INIT_VIDEO);
+    int ret = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     if (ret != 0) {
       printf("Could not initialize SDL - %s\n.", SDL_GetError());
       return -1;
@@ -103,9 +103,7 @@ public:
       screen = nullptr;
     }
 
-    if(SDL_WasInit(SDL_INIT_VIDEO)){
-      SDL_Quit();
-    }
+    SDL_Quit();
   }
 
 private:
@@ -115,7 +113,7 @@ private:
 };
 
 int main(int argc, char *argv[]) {
-  if (!(argc > 2)) {
+  if (argc <= 2) {
     // wrong arguments, print help menu
     printHelpMenu();
 
@@ -142,7 +140,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  AVStream *video_stream = demuxer.getVideoStream(video_stream_index);
+  AVStream *video_stream = demuxer.getStream(video_stream_index);
   FFMEPGCodec video_codec;
   auto codec_id = video_stream->codecpar->codec_id;
   auto par = video_stream->codecpar;
