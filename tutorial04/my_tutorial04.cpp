@@ -14,7 +14,7 @@ public:
   ~SDLApp() { onCleanup(); }
 
   int onInit() {
-    int ret = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+    int ret = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
     if (ret != 0) {
       printf("Could not initialize SDL - %s\n.", SDL_GetError());
       return -1;
@@ -196,7 +196,6 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
         // try to decode audio packet
         int ret = audio_codec.sendPacketToCodec(packet);
         av_packet_unref(packet);
-        av_packet_free(&packet);
         if (ret < 0) {
           printf("Error sending packet for decoding %s.\n", av_err2str(ret));
           goto end;

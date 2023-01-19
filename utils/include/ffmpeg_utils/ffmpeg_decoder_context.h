@@ -6,12 +6,14 @@
 #define FFMPEG_VIDEO_PLAYER_FFMPEG_DECODER_CONTEXT_H
 
 #pragma once
-#include "ffmpeg_utils/ffmpeg_audio_packet_queue.h"
 #include "ffmpeg_utils/ffmpeg_audio_resampler.h"
 #include "ffmpeg_utils/ffmpeg_codec.h"
 #include "ffmpeg_utils/ffmpeg_demuxer.h"
+#include "ffmpeg_utils/ffmpeg_frame_queue.h"
 #include "ffmpeg_utils/ffmpeg_headers.h"
 #include "ffmpeg_utils/ffmpeg_image_converter.h"
+#include "ffmpeg_utils/ffmpeg_packet_queue.h"
+#include "ringbuffer.hpp"
 #include "simple_fifo.h"
 
 #include <string>
@@ -80,7 +82,9 @@ public:
   AVCodecContext *audio_codec_ctx{nullptr};
   AVCodecContext *video_codec_ctx{nullptr};
 
-  AudioPacketQueue audio_packet_queue;
+  PacketQueue audio_packet_queue;
+  FrameQueue audio_frame_queue;
+  PacketQueue video_packet_queue;
   using AudioSampleFIFO = utils::SimpleFIFO<int16_t>;
   std::unique_ptr<AudioSampleFIFO> audio_sample_fifo;
 };

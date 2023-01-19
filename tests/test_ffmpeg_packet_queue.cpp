@@ -3,7 +3,7 @@
 //
 #include <gmock/gmock.h>
 
-#include "ffmpeg_utils/ffmpeg_audio_packet_queue.h"
+#include "ffmpeg_utils/ffmpeg_packet_queue.h"
 
 using namespace testing;
 using namespace ffmpeg_utils;
@@ -22,7 +22,7 @@ public:
     av_packet_free(p);
   }
 
-  AudioPacketQueue q;
+  PacketQueue q;
   AVPacket *pkt;
 };
 

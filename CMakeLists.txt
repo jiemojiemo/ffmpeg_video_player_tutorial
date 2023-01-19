@@ -12,12 +12,12 @@ if (ENABLE_ASAN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
 endif ()
 
-
+add_subdirectory(3rdparty)
 
 add_subdirectory(utils)
 add_subdirectory(tutorial01)
 add_subdirectory(tutorial02)
 add_subdirectory(tutorial03)
-
+add_subdirectory(tutorial04)
 
 add_subdirectory(tests)

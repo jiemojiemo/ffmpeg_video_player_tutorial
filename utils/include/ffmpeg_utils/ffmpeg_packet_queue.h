@@ -2,16 +2,16 @@
 // Created by user on 1/19/23.
 //
 
-#ifndef FFMPEG_VIDEO_PLAYER_FFMPEG_AUDIO_PACKET_QUEUE_H
-#define FFMPEG_VIDEO_PLAYER_FFMPEG_AUDIO_PACKET_QUEUE_H
+#ifndef FFMPEG_VIDEO_PLAYER_FFMPEG_PACKET_QUEUE_H
+#define FFMPEG_VIDEO_PLAYER_FFMPEG_PACKET_QUEUE_H
 #pragma once
 #include "ffmpeg_utils/ffmpeg_headers.h"
 #include <queue>
 #include <thread>
 namespace ffmpeg_utils {
-class AudioPacketQueue {
+class PacketQueue {
 public:
-  ~AudioPacketQueue() {
+  ~PacketQueue() {
     std::lock_guard lg(mut_);
 
     for (; !packet_que_.empty();) {
@@ -50,4 +50,4 @@ private:
 };
 } // namespace ffmpeg_utils
 
-#endif // FFMPEG_VIDEO_PLAYER_FFMPEG_AUDIO_PACKET_QUEUE_H
+#endif // FFMPEG_VIDEO_PLAYER_FFMPEG_PACKET_QUEUE_H
