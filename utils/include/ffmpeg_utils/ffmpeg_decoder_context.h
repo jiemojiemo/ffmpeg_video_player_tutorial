@@ -85,6 +85,7 @@ public:
   PacketQueue audio_packet_queue;
   FrameQueue audio_frame_queue;
   PacketQueue video_packet_queue;
+  FrameQueue video_frame_queue;
   using AudioSampleFIFO = utils::SimpleFIFO<int16_t>;
   std::unique_ptr<AudioSampleFIFO> audio_sample_fifo;
 };
