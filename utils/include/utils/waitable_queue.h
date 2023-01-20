@@ -8,8 +8,9 @@
 #include <queue>
 #include <thread>
 namespace utils {
-template <typename T, std::size_t QUEUE_SIZE = INT64_MAX> class WaitableQueue {
+template <typename T> class WaitableQueue {
 public:
+  WaitableQueue(size_t queue_size = INT16_MAX) : queue_size_(queue_size) {}
   bool empty() const {
     std::lock_guard lg(mut_);
     return q_.empty();
@@ -17,10 +18,10 @@ public:
 
   bool full() const {
     std::lock_guard lg(mut_);
-    return q_.size() == QUEUE_SIZE;
+    return q_.size() == queue_size_;
   }
 
-  size_t capacity() const { return QUEUE_SIZE; }
+  size_t capacity() const { return queue_size_; }
 
   size_t size() const {
     std::lock_guard lg(mut_);
@@ -29,17 +30,16 @@ public:
 
   void push(T new_value) {
     std::lock_guard lg(mut_);
-    if (q_.size() >= QUEUE_SIZE) {
+    if (q_.size() >= queue_size_) {
       return;
     }
-
     q_.push(std::move(new_value));
     data_cond_.notify_one();
   }
 
   bool try_push(T new_value) {
     std::lock_guard lg(mut_);
-    if (q_.size() >= QUEUE_SIZE) {
+    if (q_.size() >= queue_size_) {
       return false;
     }
 
@@ -91,7 +91,7 @@ public:
 
   void wait_and_push(T new_value) {
     std::unique_lock<std::mutex> lk(mut_);
-    has_space_cond_.wait(lk, [this]() { return q_.size() < QUEUE_SIZE; });
+    has_space_cond_.wait(lk, [this]() { return q_.size() < queue_size_; });
     q_.push(std::move(new_value));
   }
 
@@ -108,6 +108,7 @@ private:
   std::condition_variable data_cond_;
   std::condition_variable has_space_cond_;
   std::queue<T> q_;
+  size_t queue_size_{0};
 };
 } // namespace utils
 

@@ -27,6 +27,7 @@ public:
     std::lock_guard lg(mut_);
     auto new_pkt = av_packet_clone(pkt);
     packet_que_.push(new_pkt);
+    total_pkt_size_ += new_pkt->size;
   }
 
   AVPacket *pop() {
@@ -34,6 +35,7 @@ public:
     if (!packet_que_.empty()) {
       auto *return_pkt = packet_que_.front();
       packet_que_.pop();
+      total_pkt_size_ -= return_pkt->size;
       return return_pkt;
     }
     return nullptr;
@@ -44,9 +46,12 @@ public:
     return packet_que_.size();
   }
 
+  size_t totalPacketSize() const { return total_pkt_size_; }
+
 private:
   std::queue<AVPacket *> packet_que_;
   mutable std::mutex mut_;
+  size_t total_pkt_size_{0};
 };
 } // namespace ffmpeg_utils
 

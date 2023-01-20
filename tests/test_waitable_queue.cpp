@@ -15,7 +15,7 @@ public:
 
   WaitableQueue<int> int_que;
   WaitableQueue<std::vector<int>> vec_que;
-  WaitableQueue<std::vector<int>, capacity> fixed_q;
+  WaitableQueue<std::vector<int>> fixed_q{capacity};
 };
 
 TEST_F(AWaitableQueue, IsEmptyWhenInit) { ASSERT_TRUE(int_que.empty()); }
@@ -36,8 +36,7 @@ TEST_F(AWaitableQueue, PushIncreaseSize) {
   ASSERT_THAT(int_que.size(), Eq(1));
 }
 
-TEST_F(AWaitableQueue, PushDoNotIncreaseSizeIfItIsFull)
-{
+TEST_F(AWaitableQueue, PushDoNotIncreaseSizeIfItIsFull) {
   std::vector<int> item{1, 2, 3};
   for (auto i = 0u; i < fixed_q.capacity(); ++i) {
     fixed_q.push(item);
@@ -170,7 +169,7 @@ TEST_F(AWaitableQueue, CanMultiThreadPush) {
 }
 
 TEST_F(AWaitableQueue, CanInitWithCapacity) {
-  WaitableQueue<std::vector<int>, capacity> vec_fixed_q;
+  WaitableQueue<std::vector<int>> vec_fixed_q{capacity};
 
   ASSERT_THAT(vec_fixed_q.capacity(), Eq(capacity));
 }

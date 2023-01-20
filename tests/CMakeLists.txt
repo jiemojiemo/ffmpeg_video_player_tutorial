@@ -9,6 +9,7 @@ add_executable(unit_test
         test_ffmpeg_frame_queue.cpp
         test_ffmpeg_image_converter.cpp
         test_ffmpeg_packet_queue.cpp
+        test_ffmpeg_waitalbe_packet_queue.cpp
         test_waitable_queue.cpp
         )
 target_link_libraries(unit_test PRIVATE gmock_main my_utils)

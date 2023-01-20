@@ -7,6 +7,9 @@
 
 #pragma once
 #include <functional>
+
+namespace utils
+{
 class ScopeGuard {
 public:
   explicit ScopeGuard(std::function<void()> onExitScope)
@@ -21,10 +24,12 @@ private: // noncopyable
   ScopeGuard(ScopeGuard const &) = delete;
   ScopeGuard &operator=(ScopeGuard const &) = delete;
 };
+}
+
 
 #define SCOPEGUARD_LINENAME_CAT(name, line) name##line
 #define SCOPEGUARD_LINENAME(name, line) SCOPEGUARD_LINENAME_CAT(name, line)
 #define ON_SCOPE_EXIT(callback)                                                \
-  ScopeGuard SCOPEGUARD_LINENAME(EXIT, __LINE__)(callback)
+  utils::ScopeGuard SCOPEGUARD_LINENAME(EXIT, __LINE__)(callback)
 
 #endif // FFMPEG_VIDEO_PLAYER_SCOPE_GUARD_H

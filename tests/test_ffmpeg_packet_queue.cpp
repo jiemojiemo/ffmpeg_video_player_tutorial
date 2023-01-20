@@ -61,3 +61,23 @@ TEST_F(AAudioPacketQueue, PopDecreaseQueueSize) {
 
   ASSERT_THAT(q.size(), Eq(1));
 }
+
+TEST_F(AAudioPacketQueue, CloneAndPushIncreaseTotalPacketSize) {
+  ASSERT_THAT(q.totalPacketSize(), Eq(0));
+
+  q.cloneAndPush(pkt);
+
+  ASSERT_THAT(q.totalPacketSize(), Eq(pkt->size));
+}
+
+TEST_F(AAudioPacketQueue, PopDecreaseTotalPacketSize) {
+  q.cloneAndPush(pkt);
+  q.cloneAndPush(pkt);
+  ASSERT_THAT(q.totalPacketSize(), Eq(pkt->size * 2));
+
+  q.pop();
+  ASSERT_THAT(q.totalPacketSize(), Eq(pkt->size));
+
+  q.pop();
+  ASSERT_THAT(q.totalPacketSize(), Eq(0));
+}
