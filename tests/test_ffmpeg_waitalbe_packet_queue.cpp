@@ -4,10 +4,8 @@
 #include <gmock/gmock.h>
 
 #include "ffmpeg_utils/ffmpeg_waitable_packet_queue.h"
-#include "utils/waitable_queue.h"
 
 using namespace testing;
-using namespace utils;
 using namespace std::literals;
 using namespace ffmpeg_utils;
 

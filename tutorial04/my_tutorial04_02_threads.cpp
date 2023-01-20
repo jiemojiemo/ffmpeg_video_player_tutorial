@@ -253,6 +253,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
 
       // there is no frame in queue, just fill remain samples to zero
       if (frame == nullptr) {
+        printf("no audio frame, set zeros\n");
         std::fill_n(int16_stream, num_samples_need, 0);
         return;
       } else {
@@ -325,6 +326,9 @@ int main(int argc, char *argv[]) {
       if (ret == AVERROR_EOF || packet == nullptr) {
         break;
       }
+
+      //      printf("%zd %zd\n", decoder_ctx.video_packet_queue.size(),
+      //             decoder_ctx.audio_packet_queue.size());
 
       if (packet->stream_index == decoder_ctx.video_stream_index) {
         decoder_ctx.video_packet_queue.cloneAndPush(packet);
@@ -410,6 +414,7 @@ int main(int argc, char *argv[]) {
         ret = decodePacketAndPushToFrameQueue(decoder_ctx.audio_packet_queue,
                                               decoder_ctx.audio_codec, frame,
                                               decoder_ctx.audio_frame_queue);
+        printf("%zd \n", decoder_ctx.audio_frame_queue.size());
         RETURN_IF_ERROR_LOG(ret, "decode audio packet failed\n");
       }
     }

@@ -13,6 +13,7 @@
 #include "ffmpeg_utils/ffmpeg_headers.h"
 #include "ffmpeg_utils/ffmpeg_image_converter.h"
 #include "ffmpeg_utils/ffmpeg_packet_queue.h"
+#include "ffmpeg_utils/ffmpeg_waitable_frame_queue.h"
 #include "ffmpeg_utils/ffmpeg_waitable_packet_queue.h"
 #include "ringbuffer.hpp"
 #include "utils/simple_fifo.h"
@@ -74,6 +75,7 @@ public:
   static const size_t VIDEO_PACKET_QUEUE_SIZE = 10;
   static const size_t AUDIO_PACKET_QUEUE_SIZE = 10;
   static const size_t VIDEO_PICTURE_QUEUE_SIZE = 1;
+  static const size_t AUDIO_FRAME_QUEUE_SIZE = 10;
 
   FFMPEGDemuxer demuxer;
   FFMPEGCodec video_codec;
@@ -89,11 +91,13 @@ public:
   AVCodecContext *audio_codec_ctx{nullptr};
   AVCodecContext *video_codec_ctx{nullptr};
 
-  //  PacketQueue audio_packet_queue;
-  WaitablePacketQueue audio_packet_sync_que{VIDEO_PACKET_QUEUE_SIZE};
+  PacketQueue audio_packet_queue;
+  WaitablePacketQueue audio_packet_sync_que;
+  WaitableFrameQueue audio_frame_sync_que{AUDIO_FRAME_QUEUE_SIZE};
   FrameQueue audio_frame_queue;
-  //  PacketQueue video_packet_queue;
-  WaitablePacketQueue video_packet_sync_que{AUDIO_PACKET_QUEUE_SIZE};
+  PacketQueue video_packet_queue;
+  WaitablePacketQueue video_packet_sync_que;
+  WaitableFrameQueue video_frame_sync_que{VIDEO_PICTURE_QUEUE_SIZE};
   FrameQueue video_frame_queue;
 
   using AudioSampleFIFO = utils::SimpleFIFO<int16_t>;

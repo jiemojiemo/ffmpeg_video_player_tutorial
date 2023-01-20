@@ -13,7 +13,8 @@
 namespace ffmpeg_utils {
 class WaitablePacketQueue {
 public:
-  explicit WaitablePacketQueue(size_t queue_size) : queue_size_(queue_size) {}
+  explicit WaitablePacketQueue(size_t queue_size = INT16_MAX)
+      : queue_size_(queue_size) {}
 
   ~WaitablePacketQueue() {
     std::lock_guard lg(mut_);
@@ -76,6 +77,14 @@ public:
     total_pkt_size_ -= return_pkt->size;
     has_space_cond_.notify_one();
     return return_pkt;
+  }
+
+  void clear() {
+    std::lock_guard lg(mut_);
+    for (; !packet_que_.empty();) {
+      packet_que_.pop();
+    }
+    has_space_cond_.notify_all();
   }
 
   size_t totalPacketSize() const { return total_pkt_size_; }

@@ -160,13 +160,13 @@ public:
     auto *ctx = (PlayContext *)(userdata);
     auto *decoder_ctx = ctx->decode_ctx;
 
+    // display video frame
     if (screen == nullptr) {
       onPrepareToPlayVideo(decoder_ctx->video_codec_ctx->width,
                            decoder_ctx->video_codec_ctx->height);
     }
 
-    // display video frame
-    auto *video_frame = decoder_ctx->video_frame_queue.pop();
+    auto *video_frame = decoder_ctx->video_frame_sync_que.tryPop();
     ON_SCOPE_EXIT([&video_frame] {
       if (video_frame != nullptr) {
         av_frame_unref(video_frame);
@@ -202,7 +202,7 @@ private:
 
 void audioCallback(void *userdata, Uint8 *stream, int len) {
   auto *ctx = (DecoderContext *)(userdata);
-  auto &audio_frame_queue = ctx->audio_frame_queue;
+  auto &audio_frame_queue = ctx->audio_frame_sync_que;
   auto *sample_fifo = ctx->audio_sample_fifo.get();
   auto &audio_codec = ctx->audio_codec;
   auto &resampler = ctx->audio_resampler;
@@ -244,7 +244,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
       break;
     } else {
       // if samples in fifo not enough, get frame and push samples to fifo
-      auto *frame = audio_frame_queue.pop();
+      auto *frame = audio_frame_queue.tryPop();
       ON_SCOPE_EXIT([&frame] {
         if (frame != nullptr) {
           av_frame_unref(frame);
@@ -254,6 +254,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
 
       // there is no frame in queue, just fill remain samples to zero
       if (frame == nullptr) {
+        printf("no audio frame, set zeros\n");
         std::fill_n(int16_stream, num_samples_need, 0);
         return;
       } else {
@@ -325,8 +326,6 @@ int main(int argc, char *argv[]) {
               DecoderContext::MAX_VIDEOQ_SIZE ||
           decoder_ctx.audio_packet_sync_que.totalPacketSize() >=
               DecoderContext::MAX_AUDIOQ_SIZE) {
-        printf("%zd %zd\n", decoder_ctx.video_packet_sync_que.size(),
-               decoder_ctx.audio_packet_sync_que.size());
         std::this_thread::sleep_for(10ms);
         continue;
       }
@@ -336,20 +335,21 @@ int main(int argc, char *argv[]) {
 
       // read end of file, just exit this thread
       if (ret == AVERROR_EOF || packet == nullptr) {
+        sdl_app.running = false;
         break;
       }
 
       if (packet->stream_index == decoder_ctx.video_stream_index) {
-        decoder_ctx.video_packet_sync_que.waitAndPush(packet);
+        decoder_ctx.video_packet_sync_que.tryPush(packet);
       } else if (packet->stream_index == decoder_ctx.audio_stream_index) {
-        decoder_ctx.audio_packet_sync_que.waitAndPush(packet);
+        decoder_ctx.audio_packet_sync_que.tryPush(packet);
       }
     }
   });
 
   auto decodePacketAndPushToFrameQueue =
       [](WaitablePacketQueue &packet_queue, FFMPEGCodec &codec,
-         AVFrame *out_frame, FrameQueue &out_frame_queue) {
+         AVFrame *out_frame, WaitableFrameQueue &out_frame_queue) {
         auto *pkt = packet_queue.waitAndPop();
         ON_SCOPE_EXIT([&pkt] {
           if (pkt != nullptr) {
@@ -379,7 +379,7 @@ int main(int argc, char *argv[]) {
             return -1;
           }
 
-          out_frame_queue.cloneAndPush(out_frame);
+          out_frame_queue.waitAndPush(out_frame);
         }
 
         return 0;
@@ -400,7 +400,7 @@ int main(int argc, char *argv[]) {
       if (decoder_ctx.video_packet_sync_que.size() != 0) {
         ret = decodePacketAndPushToFrameQueue(decoder_ctx.video_packet_sync_que,
                                               decoder_ctx.video_codec, frame,
-                                              decoder_ctx.video_frame_queue);
+                                              decoder_ctx.video_frame_sync_que);
         RETURN_IF_ERROR_LOG(ret, "decode video packet failed\n");
       }
     }
@@ -422,7 +422,7 @@ int main(int argc, char *argv[]) {
       if (decoder_ctx.audio_packet_sync_que.size() != 0) {
         ret = decodePacketAndPushToFrameQueue(decoder_ctx.audio_packet_sync_que,
                                               decoder_ctx.audio_codec, frame,
-                                              decoder_ctx.audio_frame_queue);
+                                              decoder_ctx.audio_frame_sync_que);
         RETURN_IF_ERROR_LOG(ret, "decode audio packet failed\n");
       }
     }
@@ -436,8 +436,13 @@ int main(int argc, char *argv[]) {
   }
 
   demux_thread.join();
+
+  decoder_ctx.video_frame_sync_que.clear();
   video_decode_thread.join();
+
+  decoder_ctx.audio_frame_sync_que.clear();
   audio_decode_thread.join();
+
   sdl_app.onCleanup();
   return 0;
 }
