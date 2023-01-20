@@ -321,12 +321,12 @@ int main(int argc, char *argv[]) {
     for (; sdl_app.running;) {
 
       // sleep if packet size in queue is very large
-      if (decoder_ctx.video_packet_queue.totalPacketSize() >=
+      if (decoder_ctx.video_packet_sync_que.totalPacketSize() >=
               DecoderContext::MAX_VIDEOQ_SIZE ||
-          decoder_ctx.audio_packet_queue.totalPacketSize() >=
+          decoder_ctx.audio_packet_sync_que.totalPacketSize() >=
               DecoderContext::MAX_AUDIOQ_SIZE) {
-        printf("%zd %zd\n", decoder_ctx.video_packet_queue.size(),
-               decoder_ctx.audio_packet_queue.size());
+        printf("%zd %zd\n", decoder_ctx.video_packet_sync_que.size(),
+               decoder_ctx.audio_packet_sync_que.size());
         std::this_thread::sleep_for(10ms);
         continue;
       }
@@ -340,17 +340,17 @@ int main(int argc, char *argv[]) {
       }
 
       if (packet->stream_index == decoder_ctx.video_stream_index) {
-        decoder_ctx.video_packet_queue.cloneAndPush(packet);
+        decoder_ctx.video_packet_sync_que.waitAndPush(packet);
       } else if (packet->stream_index == decoder_ctx.audio_stream_index) {
-        decoder_ctx.audio_packet_queue.cloneAndPush(packet);
+        decoder_ctx.audio_packet_sync_que.waitAndPush(packet);
       }
     }
   });
 
   auto decodePacketAndPushToFrameQueue =
-      [](PacketQueue &packet_queue, FFMPEGCodec &codec, AVFrame *out_frame,
-         FrameQueue &out_frame_queue) {
-        auto *pkt = packet_queue.pop();
+      [](WaitablePacketQueue &packet_queue, FFMPEGCodec &codec,
+         AVFrame *out_frame, FrameQueue &out_frame_queue) {
+        auto *pkt = packet_queue.waitAndPop();
         ON_SCOPE_EXIT([&pkt] {
           if (pkt != nullptr) {
             av_packet_unref(pkt);
@@ -397,8 +397,8 @@ int main(int argc, char *argv[]) {
     });
 
     for (; sdl_app.running;) {
-      if (decoder_ctx.video_packet_queue.size() != 0) {
-        ret = decodePacketAndPushToFrameQueue(decoder_ctx.video_packet_queue,
+      if (decoder_ctx.video_packet_sync_que.size() != 0) {
+        ret = decodePacketAndPushToFrameQueue(decoder_ctx.video_packet_sync_que,
                                               decoder_ctx.video_codec, frame,
                                               decoder_ctx.video_frame_queue);
         RETURN_IF_ERROR_LOG(ret, "decode video packet failed\n");
@@ -419,8 +419,8 @@ int main(int argc, char *argv[]) {
     });
 
     for (; sdl_app.running;) {
-      if (decoder_ctx.audio_packet_queue.size() != 0) {
-        ret = decodePacketAndPushToFrameQueue(decoder_ctx.audio_packet_queue,
+      if (decoder_ctx.audio_packet_sync_que.size() != 0) {
+        ret = decodePacketAndPushToFrameQueue(decoder_ctx.audio_packet_sync_que,
                                               decoder_ctx.audio_codec, frame,
                                               decoder_ctx.audio_frame_queue);
         RETURN_IF_ERROR_LOG(ret, "decode audio packet failed\n");

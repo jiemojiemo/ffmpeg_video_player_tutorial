@@ -13,6 +13,7 @@
 #include "ffmpeg_utils/ffmpeg_headers.h"
 #include "ffmpeg_utils/ffmpeg_image_converter.h"
 #include "ffmpeg_utils/ffmpeg_packet_queue.h"
+#include "ffmpeg_utils/ffmpeg_waitable_packet_queue.h"
 #include "ringbuffer.hpp"
 #include "utils/simple_fifo.h"
 #include "utils/waitable_queue.h"
@@ -70,8 +71,9 @@ public:
   static const size_t SDL_AUDIO_BUFFER_SIZE = 1024;
   static const size_t MAX_AUDIOQ_SIZE = (5 * 16 * 1024);
   static const size_t MAX_VIDEOQ_SIZE = (5 * 256 * 1024);
+  static const size_t VIDEO_PACKET_QUEUE_SIZE = 10;
+  static const size_t AUDIO_PACKET_QUEUE_SIZE = 10;
   static const size_t VIDEO_PICTURE_QUEUE_SIZE = 1;
-
 
   FFMPEGDemuxer demuxer;
   FFMPEGCodec video_codec;
@@ -87,10 +89,13 @@ public:
   AVCodecContext *audio_codec_ctx{nullptr};
   AVCodecContext *video_codec_ctx{nullptr};
 
-  PacketQueue audio_packet_queue;
+  //  PacketQueue audio_packet_queue;
+  WaitablePacketQueue audio_packet_sync_que{VIDEO_PACKET_QUEUE_SIZE};
   FrameQueue audio_frame_queue;
-  PacketQueue video_packet_queue;
+  //  PacketQueue video_packet_queue;
+  WaitablePacketQueue video_packet_sync_que{AUDIO_PACKET_QUEUE_SIZE};
   FrameQueue video_frame_queue;
+
   using AudioSampleFIFO = utils::SimpleFIFO<int16_t>;
   std::unique_ptr<AudioSampleFIFO> audio_sample_fifo;
 };
