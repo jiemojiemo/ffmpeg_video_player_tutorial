@@ -14,7 +14,7 @@
 #include "ffmpeg_utils/ffmpeg_image_converter.h"
 #include "ffmpeg_utils/ffmpeg_packet_queue.h"
 #include "ringbuffer.hpp"
-#include "simple_fifo.h"
+#include "utils/simple_fifo.h"
 
 #include <string>
 
