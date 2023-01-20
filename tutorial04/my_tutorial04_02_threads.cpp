@@ -2,12 +2,22 @@
 // Created by user on 1/18/23.
 //
 #include "ffmpeg_utils/ffmpeg_decoder_context.h"
+#include "scope_guard.h"
 #include <SDL2/SDL.h>
 
 #include <queue>
 #include <stdio.h>
 #include <thread>
 using namespace ffmpeg_utils;
+
+#define FF_REFRESH_EVENT (SDL_USEREVENT)
+
+class PlayContext {
+public:
+  DecoderContext *decode_ctx{nullptr};
+  std::atomic<int> num_frames_played = 0;
+  int max_frames_to_play = 0;
+};
 
 class SDLApp {
 public:
@@ -66,6 +76,9 @@ public:
       running = false;
       break;
     }
+    case FF_REFRESH_EVENT: {
+      videoRefreshTimer(event.user.data1);
+    }
     default: {
       break;
     }
@@ -89,9 +102,7 @@ public:
     );
   }
 
-  void onRender(double sleep_time_s) {
-    SDL_Delay((1000 * sleep_time_s) - 10);
-
+  void onRender() {
     SDL_RenderClear(renderer);
     SDL_RenderCopy(
         renderer, // the rendering context
@@ -128,7 +139,58 @@ public:
     SDL_Quit();
   }
 
-  bool running = true;
+  static Uint32 sdlRefreshTimerCallback(Uint32 interval, void *param) {
+    (void)(interval);
+
+    SDL_Event event;
+    event.type = FF_REFRESH_EVENT;
+    event.user.data1 = param;
+
+    SDL_PushEvent(&event);
+
+    return 0;
+  }
+
+  static void scheduleRefresh(PlayContext *context, int delay) {
+    SDL_AddTimer(delay, sdlRefreshTimerCallback, context);
+  }
+
+  void videoRefreshTimer(void *userdata) {
+    auto *ctx = (PlayContext *)(userdata);
+    auto *decoder_ctx = ctx->decode_ctx;
+
+    if (screen == nullptr) {
+      onPrepareToPlayVideo(decoder_ctx->video_codec_ctx->width,
+                           decoder_ctx->video_codec_ctx->height);
+    }
+
+    // display video frame
+    auto *video_frame = decoder_ctx->video_frame_queue.pop();
+    ON_SCOPE_EXIT([&video_frame] {
+      if (video_frame != nullptr) {
+        av_frame_unref(video_frame);
+        av_frame_free(&video_frame);
+      }
+    });
+
+    if (video_frame == nullptr) {
+      scheduleRefresh(ctx, 39);
+    } else {
+      auto [convert_output_width, pict] =
+          decoder_ctx->img_conv.convert(video_frame);
+
+      onLoop(pict);
+      onRender();
+
+      scheduleRefresh(ctx, 39);
+
+      if (ctx->num_frames_played++ > ctx->max_frames_to_play) {
+        running = false;
+      }
+    }
+  }
+
+  std::atomic<bool> running = true;
 
 private:
   SDL_Window *screen{nullptr};
@@ -139,7 +201,7 @@ private:
 
 void audioCallback(void *userdata, Uint8 *stream, int len) {
   auto *ctx = (DecoderContext *)(userdata);
-  auto &audio_packet_queue = ctx->audio_packet_queue;
+  auto &audio_frame_queue = ctx->audio_frame_queue;
   auto *sample_fifo = ctx->audio_sample_fifo.get();
   auto &audio_codec = ctx->audio_codec;
   auto &resampler = ctx->audio_resampler;
@@ -150,11 +212,6 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
   int sample_index = 0;
   auto *int16_stream = reinterpret_cast<int16_t *>(stream);
   int16_t s = 0;
-  AVFrame *frame = av_frame_alloc();
-  if (frame == nullptr) {
-    printf("Could not allocate frame.\n");
-    return;
-  }
 
   auto getSampleFromFIFO = [&]() {
     for (; num_samples_need > 0;) {
@@ -167,7 +224,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
     }
   };
 
-  auto resampleAudioAndPushToFIFO = [&]() {
+  auto resampleAudioAndPushToFIFO = [&](AVFrame *frame) {
     int num_samples_out_per_channel =
         resampler.convert((const uint8_t **)frame->data, frame->nb_samples);
     int num_samples_total = num_samples_out_per_channel * num_channels;
@@ -183,46 +240,26 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
     getSampleFromFIFO();
 
     if (num_samples_need <= 0) {
-      goto end;
+      break;
     } else {
-      // if samples in fifo not enough, decode packet and push samples to fifo
-      auto *packet = audio_packet_queue.pop();
+      // if samples in fifo not enough, get frame and push samples to fifo
+      auto *frame = audio_frame_queue.pop();
+      ON_SCOPE_EXIT([&frame] {
+        if (frame != nullptr) {
+          av_frame_unref(frame);
+          av_frame_free(&frame);
+        }
+      });
 
-      // there is no packet in queue, just fill remain samples to zero
-      if (packet == nullptr) {
+      // there is no frame in queue, just fill remain samples to zero
+      if (frame == nullptr) {
         std::fill_n(int16_stream, num_samples_need, 0);
-        goto end;
+        return;
       } else {
-        // try to decode audio packet
-        int ret = audio_codec.sendPacketToCodec(packet);
-        av_packet_unref(packet);
-        if (ret < 0) {
-          printf("Error sending packet for decoding %s.\n", av_err2str(ret));
-          goto end;
-        }
-
-        while (true) {
-          ret = audio_codec.receiveFrame(frame);
-          if (ret == AVERROR(EINVAL) || ret == AVERROR_EOF ||
-              ret == AVERROR(EAGAIN)) {
-            // EOF exit loop
-            av_frame_unref(frame);
-            break;
-          } else if (ret < 0) {
-            av_frame_unref(frame);
-            printf("Error while decoding.\n");
-            return;
-          }
-
-          resampleAudioAndPushToFIFO();
-        }
+        resampleAudioAndPushToFIFO(frame);
       }
     }
   }
-
-end:
-  av_frame_unref(frame);
-  av_frame_free(&frame);
 }
 
 void printHelpMenu() {
@@ -250,8 +287,6 @@ int main(int argc, char *argv[]) {
   RETURN_IF_ERROR(ret);
 
   // prepare sdl
-  auto video_width = decoder_ctx.video_codec_ctx->width;
-  auto video_height = decoder_ctx.video_codec_ctx->height;
 
   SDLApp sdl_app;
   ret = sdl_app.onInit();
@@ -270,73 +305,126 @@ int main(int argc, char *argv[]) {
   ret = sdl_app.onOpenAudioDevice(wanted_specs, specs);
   RETURN_IF_ERROR_LOG(ret, "sdl open audio device failed\n");
 
-  ret = sdl_app.onPrepareToPlayVideo(video_width, video_height);
-  RETURN_IF_ERROR_LOG(ret, "sdl prepare window to play failed\n");
-
   // start to play audio
   sdl_app.pauseAudio(0);
 
-  // start to play video
-  AVFrame *frame = av_frame_alloc();
-  if (frame == nullptr) {
-    printf("Could not allocate frame.\n");
-    return -1;
-  }
+  PlayContext ctx;
+  ctx.decode_ctx = &decoder_ctx;
+  ctx.max_frames_to_play = max_frames_to_decode;
 
-  int i = 0;
-  AVPacket *packet{nullptr};
-  AVFrame *pict{nullptr};
-  int convert_output_width{0};
-  double fps = av_q2d(decoder_ctx.video_stream->r_frame_rate);
-  double sleep_time = 1.0 / fps;
-  SDL_Event event;
-  for (; sdl_app.running;) {
-    if (i >= max_frames_to_decode) {
-      sdl_app.running = false;
-      break;
-    }
+  SDLApp::scheduleRefresh(&ctx, 39);
 
-    std::tie(ret, packet) = decoder_ctx.demuxer.readPacket();
-    if (packet->stream_index == decoder_ctx.video_stream_index) {
-      ret = decoder_ctx.video_codec.sendPacketToCodec(packet);
-      if (ret < 0) {
-        av_packet_unref(packet);
-        printf("Error sending packet for video decoding %s.\n",
-               av_err2str(ret));
-        return -1;
+  std::thread demux_thread([&]() {
+    AVPacket *packet{nullptr};
+
+    for (; sdl_app.running;) {
+      std::tie(ret, packet) = decoder_ctx.demuxer.readPacket();
+      ON_SCOPE_EXIT([&packet] { av_packet_unref(packet); });
+
+      // read end of file, just exit this thread
+      if (ret == AVERROR_EOF || packet == nullptr) {
+        break;
       }
 
-      while (ret >= 0) {
-        ret = decoder_ctx.video_codec.receiveFrame(frame);
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF ||
-            ret == AVERROR(EAGAIN)) {
-          // EOF exit loop
-          av_frame_unref(frame);
-          break;
-        } else if (ret < 0) {
-          av_frame_unref(frame);
-          printf("Error while decoding.\n");
+      if (packet->stream_index == decoder_ctx.video_stream_index) {
+        decoder_ctx.video_packet_queue.cloneAndPush(packet);
+      } else if (packet->stream_index == decoder_ctx.audio_stream_index) {
+        decoder_ctx.audio_packet_queue.cloneAndPush(packet);
+      }
+    }
+  });
+
+  auto decodePacketAndPushToFrameQueue =
+      [](PacketQueue &packet_queue, FFMPEGCodec &codec, AVFrame *out_frame,
+         FrameQueue &out_frame_queue) {
+        auto *pkt = packet_queue.pop();
+        ON_SCOPE_EXIT([&pkt] {
+          if (pkt != nullptr) {
+            av_packet_unref(pkt);
+            av_packet_free(&pkt);
+          }
+        });
+
+        int ret = codec.sendPacketToCodec(pkt);
+        if (ret < 0) {
+          printf("Error sending packet for decoding %s.\n", av_err2str(ret));
           return -1;
         }
 
-        std::tie(convert_output_width, pict) =
-            decoder_ctx.img_conv.convert(frame);
+        while (ret >= 0) {
+          ret = codec.receiveFrame(out_frame);
+          ON_SCOPE_EXIT([&out_frame] { av_frame_unref(out_frame); });
 
-        sdl_app.onLoop(pict);
-        sdl_app.onRender(sleep_time);
-      }
+          // need more packet
+          if (ret == AVERROR(EAGAIN)) {
+            break;
+          } else if (ret == AVERROR_EOF || ret == AVERROR(EINVAL)) {
+            // EOF exit loop
+            break;
+          } else if (ret < 0) {
+            printf("Error while decoding.\n");
+            return -1;
+          }
 
-      SDL_PollEvent(&event);
-      sdl_app.onEvent(event);
-    } else if (packet->stream_index == decoder_ctx.audio_stream_index) {
-      decoder_ctx.audio_packet_queue.cloneAndPush(packet);
+          out_frame_queue.cloneAndPush(out_frame);
+        }
+
+        return 0;
+      };
+
+  std::thread video_decode_thread([&]() {
+    AVFrame *frame = av_frame_alloc();
+    if (frame == nullptr) {
+      printf("Could not allocate frame.\n");
+      return -1;
     }
+    ON_SCOPE_EXIT([&frame] {
+      av_frame_unref(frame);
+      av_frame_free(&frame);
+    });
 
-    av_packet_unref(packet);
+    for (; sdl_app.running;) {
+      if (decoder_ctx.video_packet_queue.size() != 0) {
+        ret = decodePacketAndPushToFrameQueue(decoder_ctx.video_packet_queue,
+                                              decoder_ctx.video_codec, frame,
+                                              decoder_ctx.video_frame_queue);
+        RETURN_IF_ERROR_LOG(ret, "decode video packet failed\n");
+      }
+    }
+    return 0;
+  });
+
+  std::thread audio_decode_thread([&]() {
+    AVFrame *frame = av_frame_alloc();
+    if (frame == nullptr) {
+      printf("Could not allocate frame.\n");
+      return -1;
+    }
+    ON_SCOPE_EXIT([&frame] {
+      av_frame_unref(frame);
+      av_frame_free(&frame);
+    });
+
+    for (; sdl_app.running;) {
+      if (decoder_ctx.audio_packet_queue.size() != 0) {
+        ret = decodePacketAndPushToFrameQueue(decoder_ctx.audio_packet_queue,
+                                              decoder_ctx.audio_codec, frame,
+                                              decoder_ctx.audio_frame_queue);
+        RETURN_IF_ERROR_LOG(ret, "decode audio packet failed\n");
+      }
+    }
+    return 0;
+  });
+
+  SDL_Event event;
+  for (; sdl_app.running;) {
+    SDL_WaitEvent(&event);
+    sdl_app.onEvent(event);
   }
 
-  av_frame_unref(frame);
-  av_frame_free(&frame);
+  demux_thread.join();
+  video_decode_thread.join();
+  audio_decode_thread.join();
   sdl_app.onCleanup();
   return 0;
 }
