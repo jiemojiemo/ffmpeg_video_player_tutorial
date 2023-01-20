@@ -75,9 +75,11 @@ TEST_F(AAudioPacketQueue, PopDecreaseTotalPacketSize) {
   q.cloneAndPush(pkt);
   ASSERT_THAT(q.totalPacketSize(), Eq(pkt->size * 2));
 
-  q.pop();
+  auto *pop_pkt = q.pop();
+  free_packet(&pop_pkt);
   ASSERT_THAT(q.totalPacketSize(), Eq(pkt->size));
 
-  q.pop();
+  pop_pkt = q.pop();
+  free_packet(&pop_pkt);
   ASSERT_THAT(q.totalPacketSize(), Eq(0));
 }
