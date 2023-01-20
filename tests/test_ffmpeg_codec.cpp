@@ -1,14 +1,14 @@
 //
 // Created by user on 1/17/23.
 //
-#include <gmock/gmock.h>
 #include "ffmpeg_utils/ffmpeg_codec.h"
+#include <gmock/gmock.h>
 
 using namespace testing;
 using namespace ffmpeg_utils;
 class AFFMEPGCodec : public Test {
 public:
-  FFMEPGCodec d;
+  FFMPEGCodec d;
 };
 
 TEST_F(AFFMEPGCodec, CanPrepareWithCodecId) {
@@ -28,8 +28,7 @@ TEST_F(AFFMEPGCodec, GetCodecAfterPrepare) {
   ASSERT_THAT(c, NotNull());
 }
 
-TEST_F(AFFMEPGCodec, PrepareFailedIfIDInvalid)
-{
+TEST_F(AFFMEPGCodec, PrepareFailedIfIDInvalid) {
   auto invalid_id = AVCodecID::AV_CODEC_ID_WRAPPED_AVFRAME + 1;
 
   int ret = d.prepare(AVCodecID(invalid_id), nullptr);
@@ -46,8 +45,7 @@ TEST_F(AFFMEPGCodec, GetCodecContextAfterPrepare) {
   ASSERT_THAT(c, NotNull());
 }
 
-TEST_F(AFFMEPGCodec, PrepareWithParametersWillCopyParametersToCodecContext)
-{
+TEST_F(AFFMEPGCodec, PrepareWithParametersWillCopyParametersToCodecContext) {
   auto codec_id = AVCodecID::AV_CODEC_ID_H264;
   AVCodecParameters parameters;
   parameters.width = 10;

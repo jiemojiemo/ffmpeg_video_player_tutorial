@@ -15,10 +15,7 @@ void printHelpMenu();
 
 class SDLApp {
 public:
-  ~SDLApp()
-  {
-    onCleanup();
-  }
+  ~SDLApp() { onCleanup(); }
 
   int onInit(int video_width, int video_height) {
     int ret = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
@@ -27,10 +24,10 @@ public:
       return -1;
     }
 
-    screen = SDL_CreateWindow(
-        "SDL Video Player", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        video_width / 2, video_height / 2,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
+    screen = SDL_CreateWindow("SDL Video Player", SDL_WINDOWPOS_UNDEFINED,
+                              SDL_WINDOWPOS_UNDEFINED, video_width / 2,
+                              video_height / 2,
+                              SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
 
     if (!screen) {
       printf("SDL: could not set video mode - exiting.\n");
@@ -47,8 +44,7 @@ public:
     return 0;
   }
 
-  void onEvent(const SDL_Event& event)
-  {
+  void onEvent(const SDL_Event &event) {
     switch (event.type) {
     case SDL_QUIT: {
       break;
@@ -61,14 +57,18 @@ public:
 
   void onLoop(AVFrame *pict) {
     SDL_UpdateYUVTexture(
-        texture,           // the texture to update
-        nullptr,             // a pointer to the rectangle of pixels to update, or NULL to update the entire texture
+        texture, // the texture to update
+        nullptr, // a pointer to the rectangle of pixels to update, or NULL to
+                 // update the entire texture
         pict->data[0],     // the raw pixel data for the Y plane
-        pict->linesize[0], // the number of bytes between rows of pixel data for the Y plane
+        pict->linesize[0], // the number of bytes between rows of pixel data for
+                           // the Y plane
         pict->data[1],     // the raw pixel data for the U plane
-        pict->linesize[1], // the number of bytes between rows of pixel data for the U plane
+        pict->linesize[1], // the number of bytes between rows of pixel data for
+                           // the U plane
         pict->data[2],     // the raw pixel data for the V plane
-        pict->linesize[2]  // the number of bytes between rows of pixel data for the V plane
+        pict->linesize[2]  // the number of bytes between rows of pixel data for
+                           // the V plane
     );
   }
 
@@ -79,26 +79,26 @@ public:
     SDL_RenderCopy(
         renderer, // the rendering context
         texture,  // the source texture
-        NULL,     // the source SDL_Rect structure or NULL for the entire texture
-        NULL      // the destination SDL_Rect structure or NULL for the entire rendering
-                  // target; the texture will be stretched to fill the given rectangle
+        NULL, // the source SDL_Rect structure or NULL for the entire texture
+        NULL  // the destination SDL_Rect structure or NULL for the entire
+             // rendering target; the texture will be stretched to fill the
+             // given rectangle
     );
     SDL_RenderPresent(renderer);
   }
 
-  void onCleanup()
-  {
-    if(texture){
+  void onCleanup() {
+    if (texture) {
       SDL_DestroyTexture(texture);
       texture = nullptr;
     }
 
-    if(renderer){
+    if (renderer) {
       SDL_DestroyRenderer(renderer);
       renderer = nullptr;
     }
 
-    if(screen){
+    if (screen) {
       SDL_DestroyWindow(screen);
       screen = nullptr;
     }
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
   }
 
   AVStream *video_stream = demuxer.getStream(video_stream_index);
-  FFMEPGCodec video_codec;
+  FFMPEGCodec video_codec;
   auto codec_id = video_stream->codecpar->codec_id;
   auto par = video_stream->codecpar;
   video_codec.prepare(codec_id, par);
@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
 
   int i = 0;
   AVPacket *packet{nullptr};
-  AVFrame* pict{nullptr};
+  AVFrame *pict{nullptr};
   int convert_output_width{0};
   double fps = av_q2d(video_stream->r_frame_rate);
   double sleep_time = 1.0 / fps;

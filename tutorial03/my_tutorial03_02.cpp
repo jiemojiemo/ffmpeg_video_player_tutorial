@@ -294,76 +294,58 @@ int main(int argc, char *argv[]) {
 
     av_packet_unref(packet);
 
+    auto decodePacketAndPushToFrameQueue =
+        [](PacketQueue &packet_queue, FFMPEGCodec &codec, AVFrame *out_frame,
+           FrameQueue &out_frame_queue) {
+          auto *pkt = packet_queue.pop();
+          ON_SCOPE_EXIT([&pkt] {
+            if (pkt != nullptr) {
+              av_packet_unref(pkt);
+              av_packet_free(&pkt);
+            }
+          });
+
+          int ret = codec.sendPacketToCodec(pkt);
+          if (ret < 0) {
+            printf("Error sending packet for decoding %s.\n", av_err2str(ret));
+            return -1;
+          }
+
+          while (ret >= 0) {
+            ret = codec.receiveFrame(out_frame);
+            ON_SCOPE_EXIT([&out_frame] { av_frame_unref(out_frame); });
+
+            // need more packet
+            if (ret == AVERROR(EAGAIN)) {
+              break;
+            } else if (ret == AVERROR_EOF || ret == AVERROR(EINVAL)) {
+              // EOF exit loop
+              break;
+            } else if (ret < 0) {
+              printf("Error while decoding.\n");
+              return -1;
+            }
+
+            out_frame_queue.cloneAndPush(out_frame);
+          }
+
+          return 0;
+        };
+
     // decode video frame and display it
     if (decoder_ctx.video_packet_queue.size() != 0) {
-      auto *video_pkt = decoder_ctx.video_packet_queue.pop();
-      ON_SCOPE_EXIT([&video_pkt] {
-        if (video_pkt != nullptr) {
-          av_packet_unref(video_pkt);
-          av_packet_free(&video_pkt);
-        }
-      });
-
-      ret = decoder_ctx.video_codec.sendPacketToCodec(video_pkt);
-      if (ret < 0) {
-        printf("Error sending packet for video decoding %s.\n",
-               av_err2str(ret));
-        return -1;
-      }
-
-      while (ret >= 0) {
-        ret = decoder_ctx.video_codec.receiveFrame(frame);
-        ON_SCOPE_EXIT([&frame] { av_frame_unref(frame); });
-
-        // need more packet
-        if (ret == AVERROR(EAGAIN)) {
-          break;
-        } else if (ret == AVERROR_EOF || ret == AVERROR(EINVAL)) {
-          // EOF exit loop
-          break;
-        } else if (ret < 0) {
-          printf("Error while decoding.\n");
-          return -1;
-        }
-
-        decoder_ctx.video_frame_queue.cloneAndPush(frame);
-      }
+      ret = decodePacketAndPushToFrameQueue(decoder_ctx.video_packet_queue,
+                                            decoder_ctx.video_codec, frame,
+                                            decoder_ctx.video_frame_queue);
+      RETURN_IF_ERROR_LOG(ret, "decode video packet failed\n");
     }
 
     // decode audio frame
     if (decoder_ctx.audio_packet_queue.size() != 0) {
-      auto *audio_pkt = decoder_ctx.audio_packet_queue.pop();
-      ON_SCOPE_EXIT([&audio_pkt] {
-        if (audio_pkt != nullptr) {
-          av_packet_unref(audio_pkt);
-          av_packet_free(&audio_pkt);
-        }
-      });
-
-      ret = decoder_ctx.audio_codec.sendPacketToCodec(audio_pkt);
-      if (ret < 0) {
-        printf("Error sending packet for video decoding %s.\n",
-               av_err2str(ret));
-        return -1;
-      }
-
-      while (ret >= 0) {
-        ret = decoder_ctx.audio_codec.receiveFrame(frame);
-        ON_SCOPE_EXIT([&frame] { av_frame_unref(frame); });
-
-        // need more packet
-        if (ret == AVERROR(EAGAIN)) {
-          break;
-        } else if (ret == AVERROR_EOF || ret == AVERROR(EINVAL)) {
-          // EOF exit loop
-          break;
-        } else if (ret < 0) {
-          printf("Error while decoding.\n");
-          return -1;
-        }
-
-        decoder_ctx.audio_frame_queue.cloneAndPush(frame);
-      }
+      ret = decodePacketAndPushToFrameQueue(decoder_ctx.audio_packet_queue,
+                                            decoder_ctx.audio_codec, frame,
+                                            decoder_ctx.audio_frame_queue);
+      RETURN_IF_ERROR_LOG(ret, "decode video packet failed\n");
     }
 
     // display video frame

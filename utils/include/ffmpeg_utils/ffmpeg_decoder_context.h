@@ -69,8 +69,8 @@ public:
   static const size_t SDL_AUDIO_BUFFER_SIZE = 1024;
 
   FFMPEGDemuxer demuxer;
-  FFMEPGCodec video_codec;
-  FFMEPGCodec audio_codec;
+  FFMPEGCodec video_codec;
+  FFMPEGCodec audio_codec;
   FFMPEGImageConverter img_conv;
   FFMPEGAudioResampler audio_resampler;
 

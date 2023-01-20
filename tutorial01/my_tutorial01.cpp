@@ -1,22 +1,20 @@
 //
 // Created by user on 1/15/23.
 //
-#include "ffmpeg_utils/ffmpeg_headers.h"
-#include "ffmpeg_utils/ffmpeg_demuxer.h"
-#include "ffmpeg_utils/ffmpeg_image_converter.h"
 #include "ffmpeg_utils/ffmpeg_codec.h"
+#include "ffmpeg_utils/ffmpeg_demuxer.h"
+#include "ffmpeg_utils/ffmpeg_headers.h"
+#include "ffmpeg_utils/ffmpeg_image_converter.h"
 
 #include <stdio.h>
 
 using namespace ffmpeg_utils;
 
 void printHelpMenu();
-void saveFrame(AVFrame * avFrame, int width, int height, int frameIndex);
+void saveFrame(AVFrame *avFrame, int width, int height, int frameIndex);
 
-int main(int argc, char * argv[])
-{
-  if ( !(argc > 2) )
-  {
+int main(int argc, char *argv[]) {
+  if (!(argc > 2)) {
     // wrong arguments, print help menu
     printHelpMenu();
 
@@ -27,7 +25,7 @@ int main(int argc, char * argv[])
   // create ffmpeg demuxer
   FFMPEGDemuxer demuxer;
   int ret = demuxer.openFile(argv[1]);
-  if(ret < 0){
+  if (ret < 0) {
     printf("Could not open file %s\n", argv[1]);
     return -1;
   }
@@ -36,38 +34,30 @@ int main(int argc, char * argv[])
 
   // Find the first video stream
   int videoStream = demuxer.getVideoStreamIndex();
-  if (videoStream == -1)
-  {
+  if (videoStream == -1) {
     return -1;
   }
 
-  FFMEPGCodec video_codec;
-  auto codec_id = demuxer.getFormatContext()->streams[videoStream]->codecpar->codec_id;
+  FFMPEGCodec video_codec;
+  auto codec_id =
+      demuxer.getFormatContext()->streams[videoStream]->codecpar->codec_id;
   auto par = demuxer.getFormatContext()->streams[videoStream]->codecpar;
   video_codec.prepare(codec_id, par);
 
   auto dst_format = AVPixelFormat::AV_PIX_FMT_RGB24;
   auto codec_context = video_codec.getCodecContext();
   FFMPEGImageConverter img_conv;
-  img_conv.prepare(
-      codec_context->width,
-      codec_context->height,
-      codec_context->pix_fmt,
-      codec_context->width,
-      codec_context->height,
-      dst_format,
-      SWS_BILINEAR,
-      nullptr,
-      nullptr,
-      nullptr);
+  img_conv.prepare(codec_context->width, codec_context->height,
+                   codec_context->pix_fmt, codec_context->width,
+                   codec_context->height, dst_format, SWS_BILINEAR, nullptr,
+                   nullptr, nullptr);
 
   // Now we need a place to actually store the frame:
-  AVFrame * pFrame = NULL;
+  AVFrame *pFrame = NULL;
 
   // Allocate video frame
-  pFrame = av_frame_alloc();  // [9]
-  if (pFrame == NULL)
-  {
+  pFrame = av_frame_alloc(); // [9]
+  if (pFrame == NULL) {
     // Could not allocate frame
     printf("Could not allocate frame.\n");
 
@@ -78,24 +68,20 @@ int main(int argc, char * argv[])
   // The numer in the argv[2] array is in a string representation. We
   // need to convert it to an integer.
   int maxFramesToDecode;
-  sscanf (argv[2], "%d", &maxFramesToDecode);
+  sscanf(argv[2], "%d", &maxFramesToDecode);
 
   int i = 0;
 
-  AVPacket* packet{nullptr};
-  for(;;)
-  {
-    if(i >= maxFramesToDecode)
-    {
+  AVPacket *packet{nullptr};
+  for (;;) {
+    if (i >= maxFramesToDecode) {
       break;
     }
 
     std::tie(ret, packet) = demuxer.readPacket();
-    if(packet->stream_index == videoStream)
-    {
+    if (packet->stream_index == videoStream) {
       ret = video_codec.sendPacketToCodec(packet);
-      if (ret < 0)
-      {
+      if (ret < 0) {
         av_packet_unref(packet);
         printf("Error sending packet for decoding %s.\n", av_err2str(ret));
         return -1;
@@ -103,17 +89,14 @@ int main(int argc, char * argv[])
     }
     av_packet_unref(packet);
 
-    while (ret >= 0)
-    {
+    while (ret >= 0) {
       ret = video_codec.receiveFrame(pFrame);
-      if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF || ret == AVERROR(EAGAIN))
-      {
+      if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF ||
+          ret == AVERROR(EAGAIN)) {
         // EOF exit loop
         av_frame_unref(pFrame);
         break;
-      }
-      else if (ret < 0)
-      {
+      } else if (ret < 0) {
         av_frame_unref(pFrame);
 
         // could not decode packet
@@ -125,33 +108,23 @@ int main(int argc, char * argv[])
 
       auto [_, pFrameRGB] = img_conv.convert(pFrame);
       // Save the frame to disk
-      if (++i <= maxFramesToDecode)
-      {
+      if (++i <= maxFramesToDecode) {
         // save the read AVFrame into ppm file
         saveFrame(pFrameRGB, codec_context->width, codec_context->height, i);
 
         // print log information
-        printf(
-            "Frame %c (%d) pts %lld dts %lld key_frame %d "
-            "[coded_picture_number %d, display_picture_number %d,"
-            " %dx%d]\n",
-            av_get_picture_type_char(pFrame->pict_type),
-            codec_context->frame_number,
-            pFrameRGB->pts,
-            pFrameRGB->pkt_dts,
-            pFrameRGB->key_frame,
-            pFrameRGB->coded_picture_number,
-            pFrameRGB->display_picture_number,
-            codec_context->width,
-            codec_context->height
-        );
-      }
-      else
-      {
+        printf("Frame %c (%d) pts %lld dts %lld key_frame %d "
+               "[coded_picture_number %d, display_picture_number %d,"
+               " %dx%d]\n",
+               av_get_picture_type_char(pFrame->pict_type),
+               codec_context->frame_number, pFrameRGB->pts, pFrameRGB->pkt_dts,
+               pFrameRGB->key_frame, pFrameRGB->coded_picture_number,
+               pFrameRGB->display_picture_number, codec_context->width,
+               codec_context->height);
+      } else {
         break;
       }
     }
-
   }
 
   // Free the YUV frame
@@ -164,11 +137,11 @@ int main(int argc, char * argv[])
 /**
  * Print help menu containing usage information.
  */
-void printHelpMenu()
-{
+void printHelpMenu() {
   printf("Invalid arguments.\n\n");
   printf("Usage: ./tutorial01 <filename> <max-frames-to-decode>\n\n");
-  printf("e.g: ./tutorial01 /home/rambodrahmani/Videos/Labrinth-Jealous.mp4 200\n");
+  printf("e.g: ./tutorial01 /home/rambodrahmani/Videos/Labrinth-Jealous.mp4 "
+         "200\n");
 }
 
 /**
@@ -176,30 +149,29 @@ void printHelpMenu()
  *
  * @param   avFrame     the AVFrame to be saved.
  * @param   width       the given frame width as obtained by the AVCodecContext.
- * @param   height      the given frame height as obtained by the AVCodecContext.
+ * @param   height      the given frame height as obtained by the
+ * AVCodecContext.
  * @param   frameIndex  the given frame index.
  */
-void saveFrame(AVFrame *avFrame, int width, int height, int frameIndex)
-{
-  FILE * pFile;
+void saveFrame(AVFrame *avFrame, int width, int height, int frameIndex) {
+  FILE *pFile;
   char szFilename[32];
-  int  y;
+  int y;
 
   /**
-     * We do a bit of standard file opening, etc., and then write the RGB data.
-     * We write the file one line at a time. A PPM file is simply a file that
-     * has RGB information laid out in a long string. If you know HTML colors,
-     * it would be like laying out the color of each pixel end to end like
-     * #ff0000#ff0000.... would be a red screen. (It's stored in binary and
-     * without the separator, but you get the idea.) The header indicated how
-     * wide and tall the image is, and the max size of the RGB values.
+   * We do a bit of standard file opening, etc., and then write the RGB data.
+   * We write the file one line at a time. A PPM file is simply a file that
+   * has RGB information laid out in a long string. If you know HTML colors,
+   * it would be like laying out the color of each pixel end to end like
+   * #ff0000#ff0000.... would be a red screen. (It's stored in binary and
+   * without the separator, but you get the idea.) The header indicated how
+   * wide and tall the image is, and the max size of the RGB values.
    */
 
   // Open file
   snprintf(szFilename, 32, "frame%d.ppm", frameIndex);
   pFile = fopen(szFilename, "wb");
-  if (pFile == NULL)
-  {
+  if (pFile == NULL) {
     return;
   }
 
@@ -207,8 +179,7 @@ void saveFrame(AVFrame *avFrame, int width, int height, int frameIndex)
   fprintf(pFile, "P6\n%d %d\n255\n", width, height);
 
   // Write pixel data
-  for (y = 0; y < height; y++)
-  {
+  for (y = 0; y < height; y++) {
     fwrite(avFrame->data[0] + y * avFrame->linesize[0], 1, width * 3, pFile);
   }
 
@@ -218,51 +189,51 @@ void saveFrame(AVFrame *avFrame, int width, int height, int frameIndex)
 
 // [0]
 /*
-* With ffmpeg, you have to first initialize the library.
-* Initialize libavformat and register all the muxers, demuxers and protocols.
-*
-* This registers all available file formats and codecs with the
-* library so they will be used automatically when a file with the
-* corresponding format/codec is opened. Note that you only need to call
-* av_register_all() once, so we do it here in main(). If you like, it's
-* possible to register only certain individual file formats and codecs,
-* but there's usually no reason why you would have to do that.
-*
-* av_register_all() has been deprecated in ffmpeg 4.0, it is no longer
-* necessary to call av_register_all().
+ * With ffmpeg, you have to first initialize the library.
+ * Initialize libavformat and register all the muxers, demuxers and protocols.
+ *
+ * This registers all available file formats and codecs with the
+ * library so they will be used automatically when a file with the
+ * corresponding format/codec is opened. Note that you only need to call
+ * av_register_all() once, so we do it here in main(). If you like, it's
+ * possible to register only certain individual file formats and codecs,
+ * but there's usually no reason why you would have to do that.
+ *
+ * av_register_all() has been deprecated in ffmpeg 4.0, it is no longer
+ * necessary to call av_register_all().
  */
 
 // [1]
 /**
-* Format I/O context.
-*
-* Libavformat (lavf) is a library for dealing with various media container
-* formats. Its main two purposes are demuxing - i.e. splitting a media file
-* into component streams, and the reverse process of muxing - writing supplied
-* data in a specified container format. It also has an lavf_io
-* "I/O module" which supports a number of protocols for accessing the data (e.g.
-* file, tcp, http and others). Before using lavf, you need to call
-* av_register_all() to register all compiled muxers, demuxers and protocols.
-* Unless you are absolutely sure you won't use libavformat's network
-* capabilities, you should also call avformat_network_init().
-*
-* Main lavf structure used for both muxing and demuxing is AVFormatContext,
-* which exports all information about the file being read or written. As with
-* most Libav structures, its size is not part of public ABI, so it cannot be
-* allocated on stack or directly with av_malloc(). To create an
-* AVFormatContext, use avformat_alloc_context() (some functions, like
-* avformat_open_input() might do that for you).
-*
-* Most importantly an AVFormatContext contains:
-* the AVFormatContext.iformat "input" or AVFormatContext.oformat
-* "output" format. It is either autodetected or set by user for input;
-* always set by user for output.
-* an AVFormatContext.streams "array" of AVStreams, which describe all
-* elementary streams stored in the file. AVStreams are typically referred to
-* using their index in this array.
-* an AVFormatContext.pb "I/O context". It is either opened by lavf or
-* set by user for input, always set by user for output (unless you are dealing
-* with an AVFMT_NOFILE format).
+ * Format I/O context.
+ *
+ * Libavformat (lavf) is a library for dealing with various media container
+ * formats. Its main two purposes are demuxing - i.e. splitting a media file
+ * into component streams, and the reverse process of muxing - writing supplied
+ * data in a specified container format. It also has an lavf_io
+ * "I/O module" which supports a number of protocols for accessing the data
+ * (e.g. file, tcp, http and others). Before using lavf, you need to call
+ * av_register_all() to register all compiled muxers, demuxers and protocols.
+ * Unless you are absolutely sure you won't use libavformat's network
+ * capabilities, you should also call avformat_network_init().
+ *
+ * Main lavf structure used for both muxing and demuxing is AVFormatContext,
+ * which exports all information about the file being read or written. As with
+ * most Libav structures, its size is not part of public ABI, so it cannot be
+ * allocated on stack or directly with av_malloc(). To create an
+ * AVFormatContext, use avformat_alloc_context() (some functions, like
+ * avformat_open_input() might do that for you).
+ *
+ * Most importantly an AVFormatContext contains:
+ * the AVFormatContext.iformat "input" or AVFormatContext.oformat
+ * "output" format. It is either autodetected or set by user for input;
+ * always set by user for output.
+ * an AVFormatContext.streams "array" of AVStreams, which describe all
+ * elementary streams stored in the file. AVStreams are typically referred to
+ * using their index in this array.
+ * an AVFormatContext.pb "I/O context". It is either opened by lavf or
+ * set by user for input, always set by user for output (unless you are dealing
+ * with an AVFMT_NOFILE format).
  */
 
 // [2]
@@ -443,10 +414,10 @@ void saveFrame(AVFrame *avFrame, int width, int height, int frameIndex)
  * Reading from an opened file:
  * Reading data from an opened AVFormatContext is done by repeatedly calling
  * av_read_frame() on it. Each call, if successful, will return an AVPacket
- * containing encoded data for one AVStream, identified by AVPacket.stream_index.
- * This packet may be passed straight into the libavcodec decoding functions
- * avcodec_decode_video2(), avcodec_decode_audio4() or avcodec_decode_subtitle2()
- * if the caller wishes to decode the data.
+ * containing encoded data for one AVStream, identified by
+ * AVPacket.stream_index. This packet may be passed straight into the libavcodec
+ * decoding functions avcodec_decode_video2(), avcodec_decode_audio4() or
+ * avcodec_decode_subtitle2() if the caller wishes to decode the data.
  *
  * AVPacket.pts, AVPacket.dts and AVPacket.duration timing information will be
  * set if known. They may also be unset (i.e. AV_NOPTS_VALUE for pts/dts, 0 for
@@ -524,4 +495,3 @@ void saveFrame(AVFrame *avFrame, int width, int height, int frameIndex)
  * ffmpeg's parser ensures that the packets we get contain either complete or
  * multiple frames.
  */
-

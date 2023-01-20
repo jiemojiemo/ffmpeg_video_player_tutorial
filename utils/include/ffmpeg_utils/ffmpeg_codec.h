@@ -8,9 +8,9 @@
 #include "ffmpeg_utils/ffmpeg_headers.h"
 
 namespace ffmpeg_utils {
-class FFMEPGCodec {
+class FFMPEGCodec {
 public:
-  ~FFMEPGCodec() { close(); }
+  ~FFMPEGCodec() { close(); }
 
   int prepare(enum AVCodecID id, const AVCodecParameters *par) {
     codec_ = avcodec_find_decoder(id);
