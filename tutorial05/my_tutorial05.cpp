@@ -19,7 +19,6 @@ public:
   std::atomic<int> num_frames_played = 0;
   int max_frames_to_play = 0;
   std::atomic<double> audio_block;
-  std::atomic<double> video_block;
   int64_t frame_last_pts;
   double frame_last_delay;
   double frame_timer;
@@ -187,61 +186,11 @@ public:
     if (video_frame == nullptr) {
       scheduleRefresh(ctx, 1);
     } else {
-      // video clock sync
-      auto video_timebase_d = av_q2d(decoder_ctx->video_stream->time_base);
+      auto real_delay = videoSync(ctx, video_frame);
 
-      auto pts = video_frame->pts * video_timebase_d;
-      auto frame_last_pts = ctx->frame_last_pts * video_timebase_d;
+      scheduleRefresh(ctx, real_delay);
 
-      printf("Current Frame PTS:\t\t%lf\n", pts);
-      printf("Last Frame PTS:\t\t\t%lf\n", frame_last_pts);
-
-      auto pts_delay = pts - frame_last_pts;
-      printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
-
-      // if the obtained delay is incorrect
-      if (pts_delay <= 0 || pts_delay >= 1.0) {
-        // use the previously calculated delay
-        pts_delay = ctx->frame_last_delay;
-      }
-
-      printf("Corrected PTS Delay:\t%f\n", pts_delay);
-
-      // save delay information for the next time
-      ctx->frame_last_delay = pts_delay;
-      ctx->frame_last_pts = video_frame->pts;
-
-      auto audio_ref_clock = ctx->audio_block.load();
-      printf("Audio Ref Clock:\t\t%lf\n", audio_ref_clock);
-
-      auto audio_video_delay = pts - audio_ref_clock;
-      printf("Audio Video Delay:\t\t%lf\n", audio_video_delay);
-
-      auto sync_threshold =
-          (pts_delay > AV_SYNC_THRESHOLD) ? pts_delay : AV_SYNC_THRESHOLD;
-      printf("Sync Threshold:\t\t\t%lf\n", sync_threshold);
-
-      if (fabs(audio_video_delay) < AV_NOSYNC_THRESHOLD) {
-        if (audio_video_delay <= -sync_threshold) {
-          pts_delay = 0;
-        } else if (audio_video_delay >= sync_threshold) {
-          pts_delay = 2 * pts_delay; // [2]
-        }
-      }
-
-      printf("Corrected PTS delay:\t%lf\n", pts_delay);
-
-      ctx->frame_timer += pts_delay;
-
-      auto real_delay = ctx->frame_timer - (av_gettime() / 1000000.0);
-      printf("Real Delay:\t\t\t\t%lf\n", real_delay);
-      if (real_delay < 0.010) {
-        real_delay = 0.010;
-      }
-
-      scheduleRefresh(ctx, (int)std::round(real_delay * 1000));
-
-      printf("Next Scheduled Refresh:\t%f\n\n", std::round(real_delay * 1000));
+      printf("Next Scheduled Refresh:\t%dms\n\n", real_delay);
 
       // video format convert
       auto [convert_output_width, pict] =
@@ -255,6 +204,60 @@ public:
         running = false;
       }
     }
+  }
+
+  int videoSync(PlayContext *ctx, AVFrame *video_frame) {
+    auto video_timebase_d = av_q2d(ctx->decode_ctx->video_stream->time_base);
+
+    auto pts = video_frame->pts * video_timebase_d;
+    auto frame_last_pts = ctx->frame_last_pts * video_timebase_d;
+
+    printf("Current Frame PTS:\t\t%lf\n", pts);
+    printf("Last Frame PTS:\t\t\t%lf\n", frame_last_pts);
+
+    auto pts_delay = pts - frame_last_pts;
+    printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
+
+    // if the obtained delay is incorrect
+    if (pts_delay <= 0 || pts_delay >= 1.0) {
+      // use the previously calculated delay
+      pts_delay = ctx->frame_last_delay;
+    }
+
+    printf("Corrected PTS Delay:\t%f\n", pts_delay);
+
+    // save delay information for the next time
+    ctx->frame_last_delay = pts_delay;
+    ctx->frame_last_pts = video_frame->pts;
+
+    auto audio_ref_clock = ctx->audio_block.load();
+    printf("Audio Ref Clock:\t\t%lf\n", audio_ref_clock);
+
+    auto audio_video_delay = pts - audio_ref_clock;
+    printf("Audio Video Delay:\t\t%lf\n", audio_video_delay);
+
+    auto sync_threshold = std::max(pts_delay, AV_SYNC_THRESHOLD);
+    printf("Sync Threshold:\t\t\t%lf\n", sync_threshold);
+
+    if (fabs(audio_video_delay) < AV_NOSYNC_THRESHOLD) {
+      if (audio_video_delay <= -sync_threshold) {
+        pts_delay = 0;
+      } else if (audio_video_delay >= sync_threshold) {
+        pts_delay = 2 * pts_delay; // [2]
+      }
+    }
+
+    printf("Corrected PTS delay:\t%lf\n", pts_delay);
+
+    ctx->frame_timer += pts_delay;
+
+    auto real_delay = ctx->frame_timer - (av_gettime() / 1000000.0);
+    printf("Real Delay:\t\t\t\t%lf\n", real_delay);
+    if (real_delay < 0.010) {
+      real_delay = 0.010;
+    }
+
+    return (int)std::round(real_delay * 1000);
   }
 
   std::atomic<bool> running = true;
