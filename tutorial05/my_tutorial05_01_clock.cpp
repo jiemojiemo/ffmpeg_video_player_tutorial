@@ -23,6 +23,9 @@ public:
   DecoderContext *decode_ctx{nullptr};
   std::atomic<int> num_frames_played = 0;
   int max_frames_to_play = 0;
+  int audio_hw_buffer_size{0};
+  int audio_hw_buffer_frame_size{0};
+  double audio_hw_delay{0};
   Clock audio_clock_t;
   Clock video_clock_t;
 
@@ -35,40 +38,36 @@ public:
     setClockAt(clock, pts, (double)av_gettime() / 1000000.0);
   }
 
-  double getAudioClock() const{
-    return getClock(audio_clock_t);
-  }
+  double getAudioClock() const { return getClock(audio_clock_t); }
 
-  double getVideoClock() const{
-    return getClock(video_clock_t);
-  }
+  double getVideoClock() const { return getClock(video_clock_t); }
 
-  double getClock(const Clock &c) const{
+  double getClock(const Clock &c) const {
     double time = (double)av_gettime() / 1000000.0;
     return c.pts + time - c.last_updated;
   }
 
-  int videoSync(PlayContext *ctx, AVFrame *video_frame) {
-    auto video_timebase_d = av_q2d(ctx->decode_ctx->video_stream->time_base);
+  int videoSync(AVFrame *video_frame) {
+    auto video_timebase_d = av_q2d(decode_ctx->video_stream->time_base);
 
     auto pts = video_frame->pts * video_timebase_d;
-    ctx->setClock(ctx->video_clock_t, pts);
+    setClock(video_clock_t, pts);
 
-    auto pts_delay = pts - ctx->video_clock_t.pre_frame_pts;
+    auto pts_delay = pts - video_clock_t.pre_frame_pts;
     printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
     // if the obtained delay is incorrect
     if (pts_delay <= 0 || pts_delay >= 1.0) {
       // use the previously calculated delay
-      pts_delay = ctx->video_clock_t.pre_frame_delay;
+      pts_delay = video_clock_t.pre_frame_delay;
     }
     printf("Corrected PTS Delay:\t%f\n", pts_delay);
 
     // save delay information for the next time
-    ctx->video_clock_t.pre_frame_pts = pts;
-    ctx->video_clock_t.pre_frame_delay = pts_delay;
+    video_clock_t.pre_frame_pts = pts;
+    video_clock_t.pre_frame_delay = pts_delay;
 
-    auto audio_ref_clock = ctx->getAudioClock();
-    auto video_clock = ctx->getVideoClock();
+    auto audio_ref_clock = getAudioClock();
+    auto video_clock = getVideoClock();
     auto diff = video_clock - audio_ref_clock;
     printf("Audio Ref Clock:\t\t%lf\n", audio_ref_clock);
     printf("Audio Video Delay:\t\t%lf\n", diff);
@@ -88,7 +87,6 @@ public:
 
     return (int)std::round(pts_delay * 1000);
   }
-
 };
 
 class SDLApp {
@@ -248,7 +246,7 @@ public:
     if (video_frame == nullptr) {
       scheduleRefresh(ctx, 1);
     } else {
-      auto real_delay = videoSync(ctx, video_frame);
+      auto real_delay = ctx->videoSync(video_frame);
 
       scheduleRefresh(ctx, real_delay);
 
@@ -380,7 +378,8 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
       } else {
         // update audio block
         play_ctx->setClock(play_ctx->audio_clock_t,
-                           frame->pts * av_q2d(audio_stream->time_base));
+                           frame->pts * av_q2d(audio_stream->time_base) +
+                               play_ctx->audio_hw_delay);
         resampleAudioAndPushToFIFO(frame);
       }
     }
@@ -433,6 +432,12 @@ int main(int argc, char *argv[]) {
   ret = sdl_app.onOpenAudioDevice(wanted_specs, specs);
   RETURN_IF_ERROR_LOG(ret, "sdl open audio device failed\n");
 
+  ctx.audio_hw_buffer_size = specs.size;
+  ctx.audio_hw_buffer_frame_size =
+      specs.size / sizeof(int16_t) / decoder_ctx.audio_codec_ctx->channels;
+  ctx.audio_hw_delay = ctx.audio_hw_buffer_frame_size *
+                       av_q2d(decoder_ctx.audio_stream->time_base);
+
   // start to play audio
   sdl_app.pauseAudio(0);
 
@@ -462,18 +467,10 @@ int main(int argc, char *argv[]) {
       }
 
       if (packet->stream_index == decoder_ctx.video_stream_index) {
-        //        printf("video packet\n");
         decoder_ctx.video_packet_sync_que.tryPush(packet);
       } else if (packet->stream_index == decoder_ctx.audio_stream_index) {
-        //        printf("audio packet\n");
         decoder_ctx.audio_packet_sync_que.tryPush(packet);
       }
-
-      //      printf("audio packet size: %zd %zd\n",
-      //             decoder_ctx.audio_packet_sync_que.size(),
-      //             decoder_ctx.audio_packet_sync_que.totalPacketSize());
-      printf("video packet size: %zd\n",
-             decoder_ctx.video_packet_sync_que.size());
     }
   });
 
@@ -572,8 +569,6 @@ int main(int argc, char *argv[]) {
           frame->pts = frame->best_effort_timestamp + frame->repeat_pict;
           decoder_ctx.video_frame_sync_que.waitAndPush(frame);
         }
-        printf("video frame size: %zu\n",
-               decoder_ctx.video_frame_sync_que.size());
         av_frame_unref(frame);
       }
     }

@@ -74,7 +74,7 @@ public:
   static const size_t MAX_VIDEOQ_SIZE = (5 * 256 * 1024);
   static const size_t VIDEO_PACKET_QUEUE_SIZE = 10;
   static const size_t AUDIO_PACKET_QUEUE_SIZE = 10;
-  static const size_t VIDEO_PICTURE_QUEUE_SIZE = 1;
+  static const size_t VIDEO_PICTURE_QUEUE_SIZE = 2;
   static const size_t AUDIO_FRAME_QUEUE_SIZE = 10;
 
   FFMPEGDemuxer demuxer;
