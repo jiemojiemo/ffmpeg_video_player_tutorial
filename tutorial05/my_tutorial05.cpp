@@ -5,6 +5,7 @@
 #include "utils/scope_guard.h"
 #include <SDL2/SDL.h>
 
+#include <cmath>
 #include <queue>
 #include <stdio.h>
 #include <thread>
@@ -19,6 +20,7 @@ public:
   std::atomic<int> num_frames_played = 0;
   int max_frames_to_play = 0;
   std::atomic<double> audio_block;
+  double audio_frame_time0;
   int64_t frame_last_pts;
   double frame_last_delay;
   double frame_timer;
@@ -161,7 +163,7 @@ public:
   }
 
 #define AV_SYNC_THRESHOLD 0.01
-#define AV_NOSYNC_THRESHOLD 1.0
+#define AV_NOSYNC_THRESHOLD 10.0
 
   void videoRefreshTimer(void *userdata) {
     auto *ctx = (PlayContext *)(userdata);
@@ -233,31 +235,36 @@ public:
     auto audio_ref_clock = ctx->audio_block.load();
     printf("Audio Ref Clock:\t\t%lf\n", audio_ref_clock);
 
-    auto audio_video_delay = pts - audio_ref_clock;
-    printf("Audio Video Delay:\t\t%lf\n", audio_video_delay);
+    auto time1 = (double)(av_gettime() / 1000000.0);
+    auto video_clock = pts + time1 - ctx->audio_frame_time0;
+    auto diff = video_clock - audio_ref_clock;
+    printf("Audio Video Delay:\t\t%lf\n", diff);
+
+    //    auto audio_video_delay = pts - audio_ref_clock;
+    //    printf("Audio Video Delay:\t\t%lf\n", audio_video_delay);
 
     auto sync_threshold = std::max(pts_delay, AV_SYNC_THRESHOLD);
     printf("Sync Threshold:\t\t\t%lf\n", sync_threshold);
 
-    if (fabs(audio_video_delay) < AV_NOSYNC_THRESHOLD) {
-      if (audio_video_delay <= -sync_threshold) {
-        pts_delay = 0;
-      } else if (audio_video_delay >= sync_threshold) {
+    if (fabs(diff) < AV_NOSYNC_THRESHOLD) {
+      if (diff <= -sync_threshold) {
+        pts_delay = std::max(0.0, pts_delay + diff);
+      } else if (diff >= sync_threshold) {
         pts_delay = 2 * pts_delay; // [2]
       }
     }
 
     printf("Corrected PTS delay:\t%lf\n", pts_delay);
 
-    ctx->frame_timer += pts_delay;
+    //    ctx->frame_timer += pts_delay;
+    //
+    //    auto real_delay = ctx->frame_timer - (av_gettime() / 1000000.0);
+    //    printf("Real Delay:\t\t\t\t%lf\n", real_delay);
+    //    //    if (real_delay < 0.010) {
+    //    //      real_delay = 0.010;
+    //    //    }
 
-    auto real_delay = ctx->frame_timer - (av_gettime() / 1000000.0);
-    printf("Real Delay:\t\t\t\t%lf\n", real_delay);
-    if (real_delay < 0.010) {
-      real_delay = 0.010;
-    }
-
-    return (int)std::round(real_delay * 1000);
+    return (int)std::round(pts_delay * 1000);
   }
 
   std::atomic<bool> running = true;
@@ -331,6 +338,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
       } else {
         // update audio block
         play_ctx->audio_block = frame->pts * av_q2d(audio_stream->time_base);
+        play_ctx->audio_frame_time0 = (double)av_gettime() / 1000000.0;
         resampleAudioAndPushToFIFO(frame);
       }
     }
@@ -412,10 +420,18 @@ int main(int argc, char *argv[]) {
       }
 
       if (packet->stream_index == decoder_ctx.video_stream_index) {
+        //        printf("video packet\n");
         decoder_ctx.video_packet_sync_que.tryPush(packet);
       } else if (packet->stream_index == decoder_ctx.audio_stream_index) {
+        //        printf("audio packet\n");
         decoder_ctx.audio_packet_sync_que.tryPush(packet);
       }
+
+      //      printf("audio packet size: %zd %zd\n",
+      //             decoder_ctx.audio_packet_sync_que.size(),
+      //             decoder_ctx.audio_packet_sync_que.totalPacketSize());
+      printf("video packet size: %zd\n",
+             decoder_ctx.video_packet_sync_que.size());
     }
   });
 
@@ -514,7 +530,8 @@ int main(int argc, char *argv[]) {
           frame->pts = frame->best_effort_timestamp + frame->repeat_pict;
           decoder_ctx.video_frame_sync_que.waitAndPush(frame);
         }
-
+        printf("video frame size: %zu\n",
+               decoder_ctx.video_frame_sync_que.size());
         av_frame_unref(frame);
       }
     }
