@@ -33,10 +33,10 @@ public:
    * Seeking.
    */
   std::mutex seek_mut;
-  std::atomic<bool> seek_req;
-  int seek_flags;
-  int64_t seek_pos;
-  int64_t seek_rel;
+  std::atomic<bool> seek_req{false};
+  int seek_flags{0};
+  int64_t seek_pos{0};
+  int64_t seek_rel{0};
   void doSeekRelative(double incr) {
     if (!seek_req) {
       std::lock_guard lg(seek_mut);
