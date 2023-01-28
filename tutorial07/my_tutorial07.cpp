@@ -29,9 +29,34 @@ public:
   Clock audio_clock_t;
   Clock video_clock_t;
 
+  /**
+   * Seeking.
+   */
+  std::mutex seek_mut;
+  std::atomic<bool> seek_req;
+  int seek_flags;
+  int64_t seek_pos;
+  int64_t seek_rel;
+  void doSeekRelative(double incr) {
+    if (!seek_req) {
+      std::lock_guard lg(seek_mut);
+      auto pos = getAudioClock();
+      pos += incr;
+      if (pos < 0) {
+        pos = 0;
+      }
+
+      seek_rel = (int64_t)(incr * AV_TIME_BASE);
+      seek_pos = (int64_t)(pos * AV_TIME_BASE);
+      seek_flags = (incr < 0) ? AVSEEK_FLAG_BACKWARD : 0;
+      seek_req = true;
+    }
+  }
+
   void setClockAt(Clock &clock, double pts, double time) {
     clock.pts = pts;
     clock.last_updated = time;
+    //    printf("after set :%lf\n", getAudioClock());
   }
 
   void setClock(Clock &clock, double pts) {
@@ -54,13 +79,13 @@ public:
     setClock(video_clock_t, pts);
 
     auto pts_delay = pts - video_clock_t.pre_frame_pts;
-    printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
+    //    printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
     // if the obtained delay is incorrect
     if (pts_delay <= 0 || pts_delay >= 1.0) {
       // use the previously calculated delay
       pts_delay = video_clock_t.pre_frame_delay;
     }
-    printf("Corrected PTS Delay:\t%f\n", pts_delay);
+    //    printf("Corrected PTS Delay:\t%f\n", pts_delay);
 
     // save delay information for the next time
     video_clock_t.pre_frame_pts = pts;
@@ -69,21 +94,21 @@ public:
     auto audio_ref_clock = getAudioClock();
     auto video_clock = getVideoClock();
     auto diff = video_clock - audio_ref_clock;
-    printf("Audio Ref Clock:\t\t%lf\n", audio_ref_clock);
-    printf("Audio Video Delay:\t\t%lf\n", diff);
+    //    printf("Audio Ref Clock:\t\t%lf\n", audio_ref_clock);
+    //    printf("Audio Video Delay:\t\t%lf\n", diff);
 
     auto sync_threshold = std::max(pts_delay, AV_SYNC_THRESHOLD);
-    printf("Sync Threshold:\t\t\t%lf\n", sync_threshold);
+    //    printf("Sync Threshold:\t\t\t%lf\n", sync_threshold);
 
     if (fabs(diff) < AV_NOSYNC_THRESHOLD) {
       if (diff <= -sync_threshold) {
-        pts_delay = 0;
+        pts_delay = std::max(0.0, pts_delay + diff);
       } else if (diff >= sync_threshold) {
         pts_delay = 2 * pts_delay; // [2]
       }
     }
 
-    printf("Corrected PTS delay:\t%lf\n", pts_delay);
+    //    printf("Corrected PTS delay:\t%lf\n", pts_delay);
 
     return (int)std::round(pts_delay * 1000);
   }
@@ -91,6 +116,7 @@ public:
 
 class SDLApp {
 public:
+  SDLApp(PlayContext *ctx) : play_ctx(ctx) {}
   ~SDLApp() { onCleanup(); }
 
   int onInit() {
@@ -142,6 +168,30 @@ public:
 
   void onEvent(const SDL_Event &event) {
     switch (event.type) {
+    case SDL_KEYDOWN: {
+      switch (event.key.keysym.sym) {
+      case SDLK_LEFT: {
+        play_ctx->doSeekRelative(-5.0);
+        break;
+      }
+
+      case SDLK_RIGHT: {
+        play_ctx->doSeekRelative(5.0);
+        break;
+      }
+
+      case SDLK_DOWN: {
+        play_ctx->doSeekRelative(-60.0);
+        break;
+      }
+
+      case SDLK_UP: {
+        play_ctx->doSeekRelative(60.0);
+        break;
+      }
+      }
+      break;
+    }
     case SDL_QUIT: {
       running = false;
       break;
@@ -250,7 +300,7 @@ public:
 
       scheduleRefresh(ctx, real_delay);
 
-      printf("Next Scheduled Refresh:\t%dms\n\n", real_delay);
+      //      printf("Next Scheduled Refresh:\t%dms\n\n", real_delay);
 
       // video format convert
       auto [convert_output_width, pict] =
@@ -308,6 +358,7 @@ public:
   }
 
   std::atomic<bool> running = true;
+  PlayContext *play_ctx;
 
 private:
   SDL_Window *screen{nullptr};
@@ -374,11 +425,13 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
       if (frame == nullptr) {
         printf("no audio frame, set zeros\n");
         std::fill_n(int16_stream, num_samples_need, 0);
-        return;
+        break;
       } else {
         // update audio block
+        //        printf("frame pts:%lld\n", frame->pts);
         play_ctx->setClock(play_ctx->audio_clock_t,
-                           frame->pts * av_q2d(audio_stream->time_base));
+                           frame->pts * av_q2d(audio_stream->time_base) +
+                               play_ctx->audio_hw_delay);
         resampleAudioAndPushToFIFO(frame);
       }
     }
@@ -405,24 +458,24 @@ int main(int argc, char *argv[]) {
   int max_frames_to_decode = std::stoi(argv[2]);
 
   // prepare ffmpeg for decoding
-  DecoderContext decoder_ctx;
-  int ret = decoder_ctx.prepare(infile);
+  DecoderContext decode_ctx;
+  int ret = decode_ctx.prepare(infile);
   RETURN_IF_ERROR(ret);
 
   // prepare sdl
   PlayContext ctx;
-  ctx.decode_ctx = &decoder_ctx;
+  ctx.decode_ctx = &decode_ctx;
   ctx.max_frames_to_play = max_frames_to_decode;
 
-  SDLApp sdl_app;
+  SDLApp sdl_app(&ctx);
   ret = sdl_app.onInit();
   RETURN_IF_ERROR_LOG(ret, "sdl init failed\n");
 
   SDL_AudioSpec wanted_specs;
   SDL_AudioSpec specs;
-  wanted_specs.freq = decoder_ctx.audio_codec_ctx->sample_rate;
+  wanted_specs.freq = decode_ctx.audio_codec_ctx->sample_rate;
   wanted_specs.format = AUDIO_S16SYS;
-  wanted_specs.channels = decoder_ctx.audio_codec_ctx->channels;
+  wanted_specs.channels = decode_ctx.audio_codec_ctx->channels;
   wanted_specs.silence = 0;
   wanted_specs.samples = DecoderContext::SDL_AUDIO_BUFFER_SIZE;
   wanted_specs.callback = audioCallback;
@@ -433,12 +486,16 @@ int main(int argc, char *argv[]) {
 
   ctx.audio_hw_buffer_size = specs.size;
   ctx.audio_hw_buffer_frame_size =
-      specs.size / sizeof(int16_t) / decoder_ctx.audio_codec_ctx->channels;
+      specs.size / sizeof(int16_t) / decode_ctx.audio_codec_ctx->channels;
   ctx.audio_hw_delay = ctx.audio_hw_buffer_frame_size *
-                       av_q2d(decoder_ctx.audio_stream->time_base);
+                       av_q2d(decode_ctx.audio_stream->time_base);
 
   // start to play audio
   sdl_app.pauseAudio(0);
+  AVPacket flush_packet;
+  const char *FLUSH_DATA = "flush";
+  av_new_packet(&flush_packet, ::strlen(FLUSH_DATA));
+  std::copy_n(FLUSH_DATA, ::strlen(FLUSH_DATA), flush_packet.data);
 
   SDLApp::scheduleRefresh(&ctx, 39);
 
@@ -447,16 +504,54 @@ int main(int argc, char *argv[]) {
 
     for (; sdl_app.running;) {
 
+      if (ctx.seek_req) {
+        // seek stuff goes here
+        int64_t seek_pos = 0;
+        int64_t seek_rel = 0;
+        int seek_flags = 0;
+        {
+          std::lock_guard lg(ctx.seek_mut);
+          seek_pos = ctx.seek_pos;
+          seek_rel = ctx.seek_rel;
+          seek_flags = ctx.seek_flags;
+        }
+
+        auto min_ts = (seek_rel > 0) ? (seek_pos - seek_rel + 2) : (INT64_MIN);
+        auto max_ts = (seek_rel < 0) ? (seek_pos - seek_rel - 2) : (INT64_MAX);
+
+        ret = avformat_seek_file(ctx.decode_ctx->demuxer.getFormatContext(), -1,
+                                 min_ts, seek_pos, max_ts, seek_flags);
+
+        if (ret < 0) {
+          fprintf(stderr, "%s: error while seeking %s\n",
+                  decode_ctx.demuxer.getFormatContext()->url, av_err2str(ret));
+        } else {
+
+          if (ctx.decode_ctx->video_stream_index >= 0) {
+            decode_ctx.video_packet_sync_que.clear();
+            decode_ctx.video_packet_sync_que.tryPush(&flush_packet);
+          }
+
+          if (ctx.decode_ctx->audio_stream_index >= 0) {
+            decode_ctx.audio_packet_sync_que.clear();
+            decode_ctx.audio_packet_sync_que.tryPush(&flush_packet);
+          }
+        }
+
+        ctx.setClock(ctx.audio_clock_t, seek_pos / (double)AV_TIME_BASE);
+        ctx.seek_req = false;
+      }
+
       // sleep if packet size in queue is very large
-      if (decoder_ctx.video_packet_sync_que.totalPacketSize() >=
+      if (decode_ctx.video_packet_sync_que.totalPacketSize() >=
               DecoderContext::MAX_VIDEOQ_SIZE ||
-          decoder_ctx.audio_packet_sync_que.totalPacketSize() >=
+          decode_ctx.audio_packet_sync_que.totalPacketSize() >=
               DecoderContext::MAX_AUDIOQ_SIZE) {
         std::this_thread::sleep_for(10ms);
         continue;
       }
 
-      std::tie(ret, packet) = decoder_ctx.demuxer.readPacket();
+      std::tie(ret, packet) = decode_ctx.demuxer.readPacket();
       ON_SCOPE_EXIT([&packet] { av_packet_unref(packet); });
 
       // read end of file, just exit this thread
@@ -465,17 +560,17 @@ int main(int argc, char *argv[]) {
         break;
       }
 
-      if (packet->stream_index == decoder_ctx.video_stream_index) {
-        decoder_ctx.video_packet_sync_que.tryPush(packet);
-      } else if (packet->stream_index == decoder_ctx.audio_stream_index) {
-        decoder_ctx.audio_packet_sync_que.tryPush(packet);
+      if (packet->stream_index == decode_ctx.video_stream_index) {
+        decode_ctx.video_packet_sync_que.tryPush(packet);
+      } else if (packet->stream_index == decode_ctx.audio_stream_index) {
+        decode_ctx.audio_packet_sync_que.tryPush(packet);
       }
     }
   });
 
   auto decodePacketAndPushToFrameQueue =
-      [](WaitablePacketQueue &packet_queue, FFMPEGCodec &codec,
-         AVFrame *out_frame, WaitableFrameQueue &out_frame_queue) {
+      [&](WaitablePacketQueue &packet_queue, FFMPEGCodec &codec,
+          AVFrame *out_frame, WaitableFrameQueue &out_frame_queue) {
         auto *pkt = packet_queue.waitAndPop();
         ON_SCOPE_EXIT([&pkt] {
           if (pkt != nullptr) {
@@ -483,6 +578,13 @@ int main(int argc, char *argv[]) {
             av_packet_free(&pkt);
           }
         });
+
+        // seek stuff here
+        if (std::strcmp((char *)pkt->data, FLUSH_DATA) == 0) {
+          avcodec_flush_buffers(codec.getCodecContext());
+          out_frame_queue.clear();
+          return 0;
+        }
 
         int ret = codec.sendPacketToCodec(pkt);
         if (ret < 0) {
@@ -511,42 +613,43 @@ int main(int argc, char *argv[]) {
         return 0;
       };
 
-  auto decodePacket = [](WaitablePacketQueue &packet_queue, FFMPEGCodec &codec,
-                         AVFrame *out_frame) {
-    auto *pkt = packet_queue.waitAndPop();
-    ON_SCOPE_EXIT([&pkt] {
-      if (pkt != nullptr) {
-        av_packet_unref(pkt);
-        av_packet_free(&pkt);
-      }
-    });
-
-    int ret = codec.sendPacketToCodec(pkt);
-    if (ret < 0) {
-      printf("Error sending packet for decoding %s.\n", av_err2str(ret));
-      return -1;
-    }
-
-    while (ret >= 0) {
-      ret = codec.receiveFrame(out_frame);
-
-      // need more packet
-      if (ret == AVERROR(EAGAIN)) {
-        break;
-      } else if (ret == AVERROR_EOF || ret == AVERROR(EINVAL)) {
-        // EOF exit loop
-        break;
-      } else if (ret < 0) {
-        printf("Error while decoding.\n");
-        return -1;
-      }
-
-      // got frame
-      return 0;
-    }
-
-    return 0;
-  };
+  //  auto decodePacket = [](WaitablePacketQueue &packet_queue, FFMPEGCodec
+  //  &codec,
+  //                         AVFrame *out_frame) {
+  //    auto *pkt = packet_queue.waitAndPop();
+  //    ON_SCOPE_EXIT([&pkt] {
+  //      if (pkt != nullptr) {
+  //        av_packet_unref(pkt);
+  //        av_packet_free(&pkt);
+  //      }
+  //    });
+  //
+  //    int ret = codec.sendPacketToCodec(pkt);
+  //    if (ret < 0) {
+  //      printf("Error sending packet for decoding %s.\n", av_err2str(ret));
+  //      return -1;
+  //    }
+  //
+  //    while (ret >= 0) {
+  //      ret = codec.receiveFrame(out_frame);
+  //
+  //      // need more packet
+  //      if (ret == AVERROR(EAGAIN)) {
+  //        break;
+  //      } else if (ret == AVERROR_EOF || ret == AVERROR(EINVAL)) {
+  //        // EOF exit loop
+  //        break;
+  //      } else if (ret < 0) {
+  //        printf("Error while decoding.\n");
+  //        return -1;
+  //      }
+  //
+  //      // got frame
+  //      return 0;
+  //    }
+  //
+  //    return 0;
+  //  };
 
   std::thread video_decode_thread([&]() {
     AVFrame *frame = av_frame_alloc();
@@ -560,15 +663,11 @@ int main(int argc, char *argv[]) {
     });
 
     for (; sdl_app.running;) {
-      if (decoder_ctx.video_packet_sync_que.size() != 0) {
-        ret = decodePacket(decoder_ctx.video_packet_sync_que,
-                           decoder_ctx.video_codec, frame);
-        RETURN_IF_ERROR_LOG(ret, "decode video packet failed\n");
-        if (frame) {
-          frame->pts = frame->best_effort_timestamp + frame->repeat_pict;
-          decoder_ctx.video_frame_sync_que.waitAndPush(frame);
-        }
-        av_frame_unref(frame);
+      if (decode_ctx.video_packet_sync_que.size() != 0) {
+        ret = decodePacketAndPushToFrameQueue(decode_ctx.video_packet_sync_que,
+                                              decode_ctx.video_codec, frame,
+                                              decode_ctx.video_frame_sync_que);
+        RETURN_IF_ERROR_LOG(ret, "decode audio packet failed\n");
       }
     }
     return 0;
@@ -586,10 +685,10 @@ int main(int argc, char *argv[]) {
     });
 
     for (; sdl_app.running;) {
-      if (decoder_ctx.audio_packet_sync_que.size() != 0) {
-        ret = decodePacketAndPushToFrameQueue(decoder_ctx.audio_packet_sync_que,
-                                              decoder_ctx.audio_codec, frame,
-                                              decoder_ctx.audio_frame_sync_que);
+      if (decode_ctx.audio_packet_sync_que.size() != 0) {
+        ret = decodePacketAndPushToFrameQueue(decode_ctx.audio_packet_sync_que,
+                                              decode_ctx.audio_codec, frame,
+                                              decode_ctx.audio_frame_sync_que);
         RETURN_IF_ERROR_LOG(ret, "decode audio packet failed\n");
       }
     }
@@ -604,10 +703,10 @@ int main(int argc, char *argv[]) {
 
   demux_thread.join();
 
-  decoder_ctx.video_frame_sync_que.clear();
+  decode_ctx.video_frame_sync_que.clear();
   video_decode_thread.join();
 
-  decoder_ctx.audio_frame_sync_que.clear();
+  decode_ctx.audio_frame_sync_que.clear();
   audio_decode_thread.join();
 
   sdl_app.onCleanup();

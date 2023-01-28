@@ -84,6 +84,7 @@ public:
     for (; !packet_que_.empty();) {
       packet_que_.pop();
     }
+    total_pkt_size_ = 0;
     has_space_cond_.notify_all();
   }
 
