@@ -153,3 +153,24 @@ TEST_F(AWaitablePacketQueue, WaitAndPopDecreaseTotalPacketSize) {
   freePacket(&pop_pkt);
   ASSERT_THAT(q.totalPacketSize(), Eq(0));
 }
+
+TEST_F(AWaitablePacketQueue, ClearRemoveAllPackets) {
+  q.tryPush(pkt);
+  q.tryPush(pkt);
+  ASSERT_THAT(q.size(), Eq(2));
+
+  q.clear();
+
+  ASSERT_THAT(q.size(), Eq(0));
+}
+
+TEST_F(AWaitablePacketQueue, ClearResetTotalPacketSizeToZero)
+{
+  q.tryPush(pkt);
+  q.tryPush(pkt);
+  ASSERT_THAT(q.totalPacketSize(), Eq(pkt->size * 2));
+
+  q.clear();
+
+  ASSERT_THAT(q.totalPacketSize(), Eq(0));
+}

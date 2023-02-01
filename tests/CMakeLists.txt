@@ -4,6 +4,7 @@ add_executable(unit_test
         ../lsan_suppressions.cpp
         test_ffmpeg_audio_resampler.cpp
         test_ffmpeg_codec.cpp
+        test_ffmpeg_decode_engine.cpp
         test_ffmpeg_demuxer.cpp
         test_ffmpeg_format_utils.cpp
         test_ffmpeg_frame_queue.cpp

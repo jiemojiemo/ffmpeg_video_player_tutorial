@@ -16,17 +16,7 @@ public:
   explicit WaitablePacketQueue(size_t queue_size = INT16_MAX)
       : queue_size_(queue_size) {}
 
-  ~WaitablePacketQueue() {
-    std::lock_guard lg(mut_);
-
-    for (; !packet_que_.empty();) {
-      auto *pkt = packet_que_.front();
-      av_packet_unref(pkt);
-      av_packet_free(&pkt);
-
-      packet_que_.pop();
-    }
-  }
+  ~WaitablePacketQueue() { clear(); }
 
   size_t capacity() const { return queue_size_; }
   size_t size() const {
@@ -81,9 +71,15 @@ public:
 
   void clear() {
     std::lock_guard lg(mut_);
+
     for (; !packet_que_.empty();) {
+      auto *pkt = packet_que_.front();
+      av_packet_unref(pkt);
+      av_packet_free(&pkt);
+
       packet_que_.pop();
     }
+
     total_pkt_size_ = 0;
     has_space_cond_.notify_all();
   }

@@ -15,15 +15,7 @@ public:
   explicit WaitableFrameQueue(size_t queue_size) : queue_size_(queue_size) {}
 
   ~WaitableFrameQueue() {
-    std::lock_guard lg(mut_);
-
-    for (; !que_.empty();) {
-      auto *pkt = que_.front();
-      av_frame_unref(pkt);
-      av_frame_free(&pkt);
-
-      que_.pop();
-    }
+      clear();
   }
 
   size_t capacity() const { return queue_size_; }
@@ -74,9 +66,15 @@ public:
 
   void clear() {
     std::lock_guard lg(mut_);
+
     for (; !que_.empty();) {
+      auto *pkt = que_.front();
+      av_frame_unref(pkt);
+      av_frame_free(&pkt);
+
       que_.pop();
     }
+
     has_space_cond_.notify_all();
   }
 

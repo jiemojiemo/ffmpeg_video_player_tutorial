@@ -112,3 +112,13 @@ TEST_F(AWaitableFrameQueue, PopCanWaitUntilHasData) {
   freeFrame(&new_frame);
   t.join();
 }
+
+TEST_F(AWaitableFrameQueue, ClearRemoveAllFrames) {
+  q.waitAndPush(f);
+  q.waitAndPush(f);
+  ASSERT_THAT(q.size(), Eq(2));
+
+  q.clear();
+
+  ASSERT_THAT(q.size(), Eq(0));
+}
