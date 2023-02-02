@@ -119,3 +119,29 @@ TEST_F(AFFMPEGDecodeEngine, CanPullAudioFrameAfterStart) {
 
   ASSERT_THAT(frame, NotNull());
 }
+
+TEST_F(AFFMPEGDecodeEngine, CanSeekAbsolutely) {
+  e.openFile(file_path);
+  e.start();
+
+  double target_pos = 5;
+  e.seek(target_pos);
+
+  AVFrame *frame = nullptr;
+  ON_SCOPE_EXIT([&frame] {
+    if (frame != nullptr) {
+      av_frame_unref(frame);
+      av_frame_free(&frame);
+    }
+  });
+
+  for (;;) {
+    frame = e.pullVideoFrame();
+    if (frame != nullptr)
+      break;
+  }
+
+  ASSERT_THAT(frame, NotNull());
+  double frame_pts = frame->pts * av_q2d(e.video_stream->time_base);
+  ASSERT_THAT(frame_pts, DoubleNear(target_pos, 0.1));
+}

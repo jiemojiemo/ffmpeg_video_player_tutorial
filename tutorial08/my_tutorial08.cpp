@@ -169,12 +169,8 @@ public:
     if (video_frame == nullptr) {
       scheduleRefresh(ctx, 1);
     } else {
-      auto real_delay = ctx->videoSync(video_frame);
-
-      scheduleRefresh(ctx, real_delay);
-
-      printf("Next Scheduled Refresh:\t%dms\n\n", real_delay);
-
+      scheduleRefresh(ctx, 39);
+      
       // video format convert
       auto [convert_output_width, pict] = ctx->img_conv.convert(video_frame);
 
@@ -277,6 +273,7 @@ int main(int argc, char *argv[]) {
   FFMPEGDecodeEngine engine;
   int ret = engine.openFile(infile);
   RETURN_IF_ERROR_LOG(ret, "engine open file failed\n");
+
   engine.start();
 
   SDLApp sdl_app;

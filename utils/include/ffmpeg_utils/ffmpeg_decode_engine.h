@@ -41,8 +41,8 @@ public:
     ret = prepareAudioResampler();
     RETURN_IF_ERROR_LOG(ret, "Prepare audio resampler failed\n");
 
-    audio_sample_fifo = std::make_unique<AudioSampleFIFO>(
-        1024 * audio_codec_ctx->channels);
+    audio_sample_fifo =
+        std::make_unique<AudioSampleFIFO>(1024 * audio_codec_ctx->channels);
 
     is_opened_ok_ = true;
     return 0;
@@ -74,62 +74,70 @@ public:
     return 0;
   }
 
+  void seek(double target_pos) {
+    if (!seek_req_) {
+      std::lock_guard lg(seek_mut_);
+      auto pos = target_pos;
+      if (pos < 0) {
+        pos = 0;
+      }
+
+      seek_pos_ = (int64_t)(pos * AV_TIME_BASE);
+      seek_flags_ = AVSEEK_FLAG_BACKWARD;
+      seek_req_ = true;
+    }
+  }
+
   AVFrame *pullVideoFrame() {
     auto *frame = video_frame_sync_que.tryPop();
-    if (frame != nullptr) {
-      setClock(video_clock_t, frame->pts * av_q2d(video_stream->time_base));
-    }
     return frame;
   }
 
   AVFrame *pullAudioFrame() {
     auto *frame = audio_frame_sync_que.tryPop();
-    if (frame != nullptr) {
-      setClock(audio_clock_t, frame->pts * av_q2d(audio_stream->time_base));
-    }
     return frame;
   }
-
-  int videoSync(AVFrame *video_frame) {
-    auto video_timebase_d = av_q2d(video_stream->time_base);
-
-    auto pts = video_frame->pts * video_timebase_d;
-    setClock(video_clock_t, pts);
-
-    auto pts_delay = pts - video_clock_t.pre_frame_pts;
-    //    printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
-    // if the obtained delay is incorrect
-    if (pts_delay <= 0 || pts_delay >= 1.0) {
-      // use the previously calculated delay
-      pts_delay = video_clock_t.pre_frame_delay;
-    }
-    //    printf("Corrected PTS Delay:\t%f\n", pts_delay);
-
-    // save delay information for the next time
-    video_clock_t.pre_frame_pts = pts;
-    video_clock_t.pre_frame_delay = pts_delay;
-
-    auto audio_ref_clock = getAudioClock();
-    auto video_clock = getVideoClock();
-    auto diff = video_clock - audio_ref_clock;
-    //    printf("Audio Ref Clock:\t\t%lf\n", audio_ref_clock);
-    //    printf("Audio Video Delay:\t\t%lf\n", diff);
-
-    auto sync_threshold = std::max(pts_delay, AV_SYNC_THRESHOLD);
-    //    printf("Sync Threshold:\t\t\t%lf\n", sync_threshold);
-
-    if (fabs(diff) < AV_NOSYNC_THRESHOLD) {
-      if (diff <= -sync_threshold) {
-        pts_delay = std::max(0.0, pts_delay + diff);
-      } else if (diff >= sync_threshold) {
-        pts_delay = 2 * pts_delay; // [2]
-      }
-    }
-
-    //    printf("Corrected PTS delay:\t%lf\n", pts_delay);
-
-    return (int)std::round(pts_delay * 1000);
-  }
+  //
+  //  int videoSync(AVFrame *video_frame) {
+  //    auto video_timebase_d = av_q2d(video_stream->time_base);
+  //
+  //    auto pts = video_frame->pts * video_timebase_d;
+  //    setClock(video_clock_t_, pts);
+  //
+  //    auto pts_delay = pts - video_clock_t_.pre_frame_pts;
+  //    //    printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
+  //    // if the obtained delay is incorrect
+  //    if (pts_delay <= 0 || pts_delay >= 1.0) {
+  //      // use the previously calculated delay
+  //      pts_delay = video_clock_t_.pre_frame_delay;
+  //    }
+  //    //    printf("Corrected PTS Delay:\t%f\n", pts_delay);
+  //
+  //    // save delay information for the next time
+  //    video_clock_t_.pre_frame_pts = pts;
+  //    video_clock_t_.pre_frame_delay = pts_delay;
+  //
+  //    auto audio_ref_clock = getAudioClock();
+  //    auto video_clock = getVideoClock();
+  //    auto diff = video_clock - audio_ref_clock;
+  //    //    printf("Audio Ref Clock:\t\t%lf\n", audio_ref_clock);
+  //    //    printf("Audio Video Delay:\t\t%lf\n", diff);
+  //
+  //    auto sync_threshold = std::max(pts_delay, AV_SYNC_THRESHOLD);
+  //    //    printf("Sync Threshold:\t\t\t%lf\n", sync_threshold);
+  //
+  //    if (fabs(diff) < AV_NOSYNC_THRESHOLD) {
+  //      if (diff <= -sync_threshold) {
+  //        pts_delay = std::max(0.0, pts_delay + diff);
+  //      } else if (diff >= sync_threshold) {
+  //        pts_delay = 2 * pts_delay; // [2]
+  //      }
+  //    }
+  //
+  //    //    printf("Corrected PTS delay:\t%lf\n", pts_delay);
+  //
+  //    return (int)std::round(pts_delay * 1000);
+  //  }
 
   DecodeEngineState state() const { return state_; }
 
@@ -156,6 +164,8 @@ public:
   using AudioSampleFIFO = utils::SimpleFIFO<int16_t>;
   std::unique_ptr<AudioSampleFIFO> audio_sample_fifo;
 
+  int64_t last_video_frame_pos = 0; // AV_TIME_BASE
+
 private:
   static constexpr size_t MAX_AUDIOQ_SIZE = (5 * 16 * 1024);
   static constexpr size_t MAX_VIDEOQ_SIZE = (5 * 256 * 1024);
@@ -174,8 +184,12 @@ private:
   std::unique_ptr<std::thread> video_decode_thread_{nullptr};
   std::unique_ptr<std::thread> audio_decode_thread_{nullptr};
 
-  utils::Clock audio_clock_t;
-  utils::Clock video_clock_t;
+  std::mutex seek_mut_;
+  std::atomic<bool> seek_req_{false};
+  int seek_flags_{0};
+  int64_t seek_pos_{0}; // AV_TIME_BASE based
+  int64_t seek_rel_{0}; // AV_TIME_BASE based
+  AVPacket seek_packet_{.stream_index = FF_SEEK_PACKET_INDEX}; // as a event
 
   void setClockAt(utils::Clock &clock, double pts, double time) {
     clock.pts = pts;
@@ -187,14 +201,14 @@ private:
     setClockAt(clock, pts, (double)av_gettime() / 1000000.0);
   }
 
-  double getAudioClock() const { return getClock(audio_clock_t); }
-
-  double getVideoClock() const { return getClock(video_clock_t); }
-
-  double getClock(const utils::Clock &c) const {
-    double time = (double)av_gettime() / 1000000.0;
-    return c.pts + time - c.last_updated;
-  }
+  //  double getAudioClock() const { return getClock(audio_clock_t_); }
+  //
+  //  double getVideoClock() const { return getClock(video_clock_t_); }
+  //
+  //  double getClock(const utils::Clock &c) const {
+  //    double time = (double)av_gettime() / 1000000.0;
+  //    return c.pts + time - c.last_updated;
+  //  }
 
   void startThreads() {
     demux_thread_ = std::make_unique<std::thread>(
@@ -283,6 +297,54 @@ private:
         max_frames_size);
   }
 
+  int seekToNearestPreIFramePos(int64_t seek_pos, int64_t seek_rel,
+                                int seek_flags) const {
+    auto min_ts = (seek_rel > 0) ? (seek_pos - seek_rel + 2) : (INT64_MIN);
+    auto max_ts = (seek_rel < 0) ? (seek_pos - seek_rel - 2) : (seek_pos);
+
+    return avformat_seek_file(demuxer.getFormatContext(), -1, min_ts, seek_pos,
+                              max_ts, seek_flags);
+  }
+
+  void clearPacketQueueAndPushSeekEvent(int64_t seek_pos) {
+    seek_packet_.pos = seek_pos;
+
+    if (video_stream_index >= 0) {
+      video_packet_sync_que.clear();
+      video_packet_sync_que.tryPush(&seek_packet_); // send packet as a event
+    }
+
+    if (audio_stream_index >= 0) {
+      audio_packet_sync_que.clear();
+      audio_packet_sync_que.tryPush(&seek_packet_);
+    }
+  }
+
+  void doSeekInDemuxThread() {
+    int64_t seek_pos = 0;
+    int64_t seek_rel = 0;
+    int seek_flags = 0;
+    {
+      std::lock_guard lg(seek_mut_);
+      seek_pos = seek_pos_;
+      seek_rel = seek_rel_;
+      seek_flags = seek_flags_;
+    }
+
+    int ret = seekToNearestPreIFramePos(seek_pos, seek_rel, seek_flags);
+
+    if (ret < 0) {
+      fprintf(stderr, "%s: error while seeking %s\n",
+              demuxer.getFormatContext()->url, av_err2str(ret));
+    } else {
+      clearPacketQueueAndPushSeekEvent(seek_pos);
+    }
+
+    //    setClock(audio_clock_t_, seek_pos / (double)AV_TIME_BASE);
+
+
+  }
+
   void demuxThreadFunction() {
     using namespace std::literals;
 
@@ -293,7 +355,10 @@ private:
         break;
       }
 
-      // TODO: seek stuff here
+      if (seek_req_) {
+        doSeekInDemuxThread();
+        seek_req_ = false;
+      }
 
       // sleep if packet size in queue is very large
       if (video_packet_sync_que.totalPacketSize() >= MAX_VIDEOQ_SIZE ||
