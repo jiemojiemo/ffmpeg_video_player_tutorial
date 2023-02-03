@@ -6,6 +6,7 @@
 #include "ffmpeg_utils/ffmpeg_decode_engine.h"
 
 using namespace testing;
+using namespace std::literals;
 using namespace ffmpeg_utils;
 class AFFMPEGDecodeEngine : public Test {
 public:
@@ -82,42 +83,58 @@ TEST_F(AFFMPEGDecodeEngine, CanPullVideoFrameAfterStart) {
   e.openFile(file_path);
   e.start();
 
-  AVFrame *frame = nullptr;
-  ON_SCOPE_EXIT([&frame] {
-    if (frame != nullptr) {
-      av_frame_unref(frame);
-      av_frame_free(&frame);
+  AVFrame *v_frame = nullptr;
+  AVFrame *a_frame = nullptr;
+  ON_SCOPE_EXIT([&] {
+    if (v_frame != nullptr) {
+      av_frame_unref(v_frame);
+      av_frame_free(&v_frame);
+    }
+
+    if (a_frame != nullptr) {
+      av_frame_unref(a_frame);
+      av_frame_free(&a_frame);
     }
   });
 
   for (;;) {
-    frame = e.pullVideoFrame();
-    if (frame != nullptr)
+    v_frame = e.pullVideoFrame();
+    a_frame = e.pullAudioFrame();
+    if (v_frame != nullptr)
       break;
   }
 
-  ASSERT_THAT(frame, NotNull());
+  ASSERT_THAT(v_frame, NotNull());
 }
 
 TEST_F(AFFMPEGDecodeEngine, CanPullAudioFrameAfterStart) {
   e.openFile(file_path);
   e.start();
 
-  AVFrame *frame = nullptr;
-  ON_SCOPE_EXIT([&frame] {
-    if (frame != nullptr) {
-      av_frame_unref(frame);
-      av_frame_free(&frame);
+  AVFrame *v_frame = nullptr;
+  AVFrame *a_frame = nullptr;
+  ON_SCOPE_EXIT([&] {
+    if (v_frame != nullptr) {
+      av_frame_unref(v_frame);
+      av_frame_free(&v_frame);
+    }
+
+    if (a_frame != nullptr) {
+      av_frame_unref(a_frame);
+      av_frame_free(&a_frame);
     }
   });
 
   for (;;) {
-    frame = e.pullAudioFrame();
-    if (frame != nullptr)
+    v_frame = e.pullVideoFrame();
+    a_frame = e.pullAudioFrame();
+    if (a_frame != nullptr)
       break;
+    else
+      std::this_thread::sleep_for(10ms);
   }
 
-  ASSERT_THAT(frame, NotNull());
+  ASSERT_THAT(a_frame, NotNull());
 }
 
 TEST_F(AFFMPEGDecodeEngine, CanSeekAbsolutely) {
@@ -127,21 +144,30 @@ TEST_F(AFFMPEGDecodeEngine, CanSeekAbsolutely) {
   double target_pos = 5;
   e.seek(target_pos);
 
-  AVFrame *frame = nullptr;
-  ON_SCOPE_EXIT([&frame] {
-    if (frame != nullptr) {
-      av_frame_unref(frame);
-      av_frame_free(&frame);
+  AVFrame *v_frame = nullptr;
+  AVFrame *a_frame = nullptr;
+  ON_SCOPE_EXIT([&] {
+    if (v_frame != nullptr) {
+      av_frame_unref(v_frame);
+      av_frame_free(&v_frame);
+    }
+
+    if (a_frame != nullptr) {
+      av_frame_unref(a_frame);
+      av_frame_free(&a_frame);
     }
   });
 
   for (;;) {
-    frame = e.pullVideoFrame();
-    if (frame != nullptr)
+    v_frame = e.pullVideoFrame();
+    a_frame = e.pullAudioFrame();
+    if (v_frame != nullptr)
       break;
+    else
+      std::this_thread::sleep_for(10ms);
   }
 
-  ASSERT_THAT(frame, NotNull());
-  double frame_pts = frame->pts * av_q2d(e.video_stream->time_base);
+  ASSERT_THAT(v_frame, NotNull());
+  double frame_pts = v_frame->pts * av_q2d(e.video_stream->time_base);
   ASSERT_THAT(frame_pts, DoubleNear(target_pos, 0.1));
 }
