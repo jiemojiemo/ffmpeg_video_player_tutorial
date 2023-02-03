@@ -73,6 +73,30 @@ public:
 
   void onEvent(const SDL_Event &event) {
     switch (event.type) {
+    case SDL_KEYDOWN: {
+      switch (event.key.keysym.sym) {
+      case SDLK_LEFT: {
+        doSeekRelative(-5.0);
+        break;
+      }
+
+      case SDLK_RIGHT: {
+        doSeekRelative(5.0);
+        break;
+      }
+
+      case SDLK_DOWN: {
+        doSeekRelative(-60.0);
+        break;
+      }
+
+      case SDLK_UP: {
+        doSeekRelative(60.0);
+        break;
+      }
+      }
+      break;
+    }
     case SDL_QUIT: {
       running = false;
       break;
@@ -84,6 +108,13 @@ public:
       break;
     }
     }
+  }
+
+  void doSeekRelative(double incr) {
+    assert(decode_engine != nullptr);
+    auto audio_clock = clock.getAudioClock();
+    auto target_pos = audio_clock + incr;
+    decode_engine->seek(target_pos);
   }
 
   void onLoop(AVFrame *pict) {
@@ -157,15 +188,15 @@ public:
   }
 
   void videoRefreshTimer(void *userdata) {
-    auto *ctx = (FFMPEGDecodeEngine *)(userdata);
+    auto *engine = (FFMPEGDecodeEngine *)(userdata);
 
     // display video frame
     if (screen == nullptr) {
-      onPrepareToPlayVideo(ctx->video_codec_ctx->width,
-                           ctx->video_codec_ctx->height);
+      onPrepareToPlayVideo(engine->video_codec_ctx->width,
+                           engine->video_codec_ctx->height);
     }
 
-    auto *video_frame = ctx->pullVideoFrame();
+    auto *video_frame = engine->pullVideoFrame();
     ON_SCOPE_EXIT([&video_frame] {
       if (video_frame != nullptr) {
         av_frame_unref(video_frame);
@@ -174,12 +205,19 @@ public:
     });
 
     if (video_frame == nullptr) {
-      scheduleRefresh(ctx, 1);
+      scheduleRefresh(engine, 1);
     } else {
-      scheduleRefresh(ctx, 39);
+      updateVideoClockByFramePts(video_frame->pts,
+                                 engine->video_stream->time_base);
+
+      // compute target delay
+      auto real_delay_ms = (int)(av_sync.computeTargetDelay(clock) * 1000);
+
+      scheduleRefresh(engine, real_delay_ms);
+      printf("Next Scheduled Refresh:\t%dms\n\n", real_delay_ms);
 
       // video format convert
-      auto [convert_output_width, pict] = ctx->img_conv.convert(video_frame);
+      auto [convert_output_width, pict] = engine->img_conv.convert(video_frame);
 
       // render picture
       onLoop(pict);
@@ -187,11 +225,24 @@ public:
     }
   }
 
+  void updateAudioClockByFramePts(int64_t frame_pts,
+                                  const AVRational &time_base) {
+    clock.setAudioClock(static_cast<double>(frame_pts) * av_q2d(time_base) +
+                        audio_hw_delay);
+  }
+
+  void updateVideoClockByFramePts(int64_t frame_pts,
+                                  const AVRational &time_base) {
+    double video_pts = static_cast<double>(frame_pts) * av_q2d(time_base);
+    clock.setVideoClock(video_pts);
+  }
+
   std::atomic<bool> running = true;
   FFMPEGDecodeEngine *decode_engine{nullptr};
   AVSynchronizer av_sync;
   ClockManager clock;
   SDL_AudioSpec audio_spec;
+  double audio_hw_delay = {0};
 
   using AudioSampleFIFO = utils::SimpleFIFO<int16_t>;
   std::unique_ptr<AudioSampleFIFO> audio_sample_fifo;
@@ -209,6 +260,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
 
   auto *sample_fifo = sdl_app->audio_sample_fifo.get();
   auto &resampler = sdl_app->decode_engine->audio_resampler;
+  auto *audio_stream = sdl_app->decode_engine->audio_stream;
   int num_channels = sdl_app->audio_spec.channels;
 
   const int num_samples_of_stream = len / sizeof(int16_t);
@@ -262,6 +314,9 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
         return;
       } else {
         resampleAudioAndPushToFIFO(frame);
+
+        sdl_app->updateAudioClockByFramePts(frame->pts,
+                                            audio_stream->time_base);
       }
     }
   }
@@ -308,6 +363,10 @@ int main(int argc, char *argv[]) {
 
   ret = sdl_app.onOpenAudioDevice(wanted_specs, specs);
   RETURN_IF_ERROR_LOG(ret, "sdl open audio device failed\n");
+
+  auto audio_hw_buffer_frame_size =
+      specs.size / sizeof(int16_t) / specs.channels;
+  sdl_app.audio_hw_delay = audio_hw_buffer_frame_size / (double)(specs.freq);
 
   // start to play audio
   sdl_app.pauseAudio(0);

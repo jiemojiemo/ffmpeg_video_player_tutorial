@@ -17,6 +17,7 @@
 #include "utils/clock.h"
 #include "utils/scope_guard.h"
 #include "utils/simple_fifo.h"
+#include <iostream>
 
 namespace ffmpeg_utils {
 
@@ -97,47 +98,6 @@ public:
     auto *frame = audio_frame_sync_que.tryPop();
     return frame;
   }
-  //
-  //  int videoSync(AVFrame *video_frame) {
-  //    auto video_timebase_d = av_q2d(video_stream->time_base);
-  //
-  //    auto pts = video_frame->pts * video_timebase_d;
-  //    setClock(video_clock_t_, pts);
-  //
-  //    auto pts_delay = pts - video_clock_t_.pre_frame_pts;
-  //    //    printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
-  //    // if the obtained delay is incorrect
-  //    if (pts_delay <= 0 || pts_delay >= 1.0) {
-  //      // use the previously calculated delay
-  //      pts_delay = video_clock_t_.pre_frame_delay;
-  //    }
-  //    //    printf("Corrected PTS Delay:\t%f\n", pts_delay);
-  //
-  //    // save delay information for the next time
-  //    video_clock_t_.pre_frame_pts = pts;
-  //    video_clock_t_.pre_frame_delay = pts_delay;
-  //
-  //    auto audio_ref_clock = getAudioClock();
-  //    auto video_clock = getVideoClock();
-  //    auto diff = video_clock - audio_ref_clock;
-  //    //    printf("Audio Ref Clock:\t\t%lf\n", audio_ref_clock);
-  //    //    printf("Audio Video Delay:\t\t%lf\n", diff);
-  //
-  //    auto sync_threshold = std::max(pts_delay, AV_SYNC_THRESHOLD);
-  //    //    printf("Sync Threshold:\t\t\t%lf\n", sync_threshold);
-  //
-  //    if (fabs(diff) < AV_NOSYNC_THRESHOLD) {
-  //      if (diff <= -sync_threshold) {
-  //        pts_delay = std::max(0.0, pts_delay + diff);
-  //      } else if (diff >= sync_threshold) {
-  //        pts_delay = 2 * pts_delay; // [2]
-  //      }
-  //    }
-  //
-  //    //    printf("Corrected PTS delay:\t%lf\n", pts_delay);
-  //
-  //    return (int)std::round(pts_delay * 1000);
-  //  }
 
   DecodeEngineState state() const { return state_; }
 
@@ -345,7 +305,9 @@ private:
     AVPacket *packet{nullptr};
     int ret = 0;
     for (;;) {
-      if (state() != DecodeEngineState::kDecoding) {
+      auto s = state();
+      if (s == DecodeEngineState::kStopping ||
+          s == DecodeEngineState::kStopped) {
         break;
       }
 
@@ -357,6 +319,9 @@ private:
       // sleep if packet size in queue is very large
       if (video_packet_sync_que.totalPacketSize() >= MAX_VIDEOQ_SIZE ||
           audio_packet_sync_que.totalPacketSize() >= MAX_AUDIOQ_SIZE) {
+        std::cout << "wait packet queue to has space:"
+                  << video_packet_sync_que.totalPacketSize() << ","
+                  << audio_packet_sync_que.totalPacketSize() << std::endl;
         std::this_thread::sleep_for(10ms);
         continue;
       }
@@ -428,7 +393,9 @@ private:
     auto stream_time_base = audio_stream->time_base;
 
     for (;;) {
-      if (state() != DecodeEngineState::kDecoding) {
+      auto s = state();
+      if (s == DecodeEngineState::kStopping ||
+          s == DecodeEngineState::kStopped) {
         break;
       }
 
