@@ -80,7 +80,7 @@ public:
     auto pts = video_frame->pts * video_timebase_d;
     setClock(video_clock_t, pts);
 
-    auto pts_delay = pts - video_clock_t.pre_frame_pts;
+    auto pts_delay = pts - video_clock_t.pre_pts;
     //    printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
     // if the obtained delay is incorrect
     if (pts_delay <= 0 || pts_delay >= 1.0) {
@@ -90,7 +90,7 @@ public:
     //    printf("Corrected PTS Delay:\t%f\n", pts_delay);
 
     // save delay information for the next time
-    video_clock_t.pre_frame_pts = pts;
+    video_clock_t.pre_pts = pts;
     video_clock_t.pre_frame_delay = pts_delay;
 
     auto audio_ref_clock = getAudioClock();
@@ -324,7 +324,7 @@ public:
     auto pts = video_frame->pts * video_timebase_d;
     ctx->setClock(ctx->video_clock_t, pts);
 
-    auto pts_delay = pts - ctx->video_clock_t.pre_frame_pts;
+    auto pts_delay = pts - ctx->video_clock_t.pre_pts;
     printf("PTS Delay:\t\t\t\t%lf\n", pts_delay);
     // if the obtained delay is incorrect
     if (pts_delay <= 0 || pts_delay >= 1.0) {
@@ -334,7 +334,7 @@ public:
     printf("Corrected PTS Delay:\t%f\n", pts_delay);
 
     // save delay information for the next time
-    ctx->video_clock_t.pre_frame_pts = pts;
+    ctx->video_clock_t.pre_pts = pts;
     ctx->video_clock_t.pre_frame_delay = pts_delay;
 
     auto audio_ref_clock = ctx->getAudioClock();

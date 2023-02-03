@@ -2,6 +2,7 @@ add_subdirectory(googletest)
 
 add_executable(unit_test
         ../lsan_suppressions.cpp
+        test_av_synchronizer.cpp
         test_clock_manager.cpp
         test_ffmpeg_audio_resampler.cpp
         test_ffmpeg_codec.cpp

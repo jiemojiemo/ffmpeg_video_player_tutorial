@@ -174,8 +174,6 @@ private:
   static constexpr size_t VIDEO_PICTURE_QUEUE_SIZE = 2;
   static constexpr size_t AUDIO_FRAME_QUEUE_SIZE = 10;
   static constexpr int FF_SEEK_PACKET_INDEX = 10;
-  static constexpr double AV_SYNC_THRESHOLD = 0.01;
-  static constexpr double AV_NOSYNC_THRESHOLD = 10.0;
 
   std::atomic<DecodeEngineState> state_{DecodeEngineState::kStopped};
   bool is_opened_ok_{false};
@@ -339,10 +337,6 @@ private:
     } else {
       clearPacketQueueAndPushSeekEvent(seek_pos);
     }
-
-    //    setClock(audio_clock_t_, seek_pos / (double)AV_TIME_BASE);
-
-
   }
 
   void demuxThreadFunction() {

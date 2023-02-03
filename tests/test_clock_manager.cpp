@@ -34,3 +34,29 @@ TEST_F(AClockManager, CanSetVideoClock) {
 
   ASSERT_THAT(m.getVideoClock(), DoubleNear(t, 1e-5));
 }
+
+TEST_F(AClockManager, AudioPrePtsIs0WhenInit) {
+  ASSERT_THAT(m.getAudioPreClock(), DoubleNear(0.0, 1e-5));
+}
+
+TEST_F(AClockManager, VideoPrePtsIs0WhenInit) {
+  ASSERT_THAT(m.getVideoPreClock(), DoubleNear(0.0, 1e-5));
+}
+
+TEST_F(AClockManager, CanGetAudioPreClock) {
+  double t0 = 10;
+  double t1 = 20;
+  m.setAudioClock(t0);
+  m.setAudioClock(t1);
+
+  ASSERT_THAT(m.getAudioPreClock(), DoubleNear(t0, 1e-5));
+}
+
+TEST_F(AClockManager, CanGetVideoPreClock) {
+  double t0 = 10;
+  double t1 = 20;
+  m.setVideoClock(t0);
+  m.setVideoClock(t1);
+
+  ASSERT_THAT(m.getVideoPreClock(), DoubleNear(t0, 1e-5));
+}
