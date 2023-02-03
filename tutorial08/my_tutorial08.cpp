@@ -2,7 +2,10 @@
 // Created by user on 1/22/23.
 //
 #include "ffmpeg_utils/ffmpeg_decode_engine.h"
+#include "utils/av_synchronizer.h"
+#include "utils/clock_manager.h"
 #include <SDL2/SDL.h>
+#include <cassert>
 
 #include <cmath>
 #include <queue>
@@ -56,6 +59,10 @@ public:
       printf("Failed to open audio device: %s.\n", SDL_GetError());
       return -1;
     }
+
+    audio_spec = specs;
+    audio_sample_fifo =
+        std::make_unique<AudioSampleFIFO>(specs.samples * specs.channels);
 
     return 0;
   }
@@ -170,7 +177,7 @@ public:
       scheduleRefresh(ctx, 1);
     } else {
       scheduleRefresh(ctx, 39);
-      
+
       // video format convert
       auto [convert_output_width, pict] = ctx->img_conv.convert(video_frame);
 
@@ -181,6 +188,13 @@ public:
   }
 
   std::atomic<bool> running = true;
+  FFMPEGDecodeEngine *decode_engine{nullptr};
+  AVSynchronizer av_sync;
+  ClockManager clock;
+  SDL_AudioSpec audio_spec;
+
+  using AudioSampleFIFO = utils::SimpleFIFO<int16_t>;
+  std::unique_ptr<AudioSampleFIFO> audio_sample_fifo;
 
 private:
   SDL_Window *screen{nullptr};
@@ -190,11 +204,12 @@ private:
 };
 
 void audioCallback(void *userdata, Uint8 *stream, int len) {
-  auto *play_ctx = (FFMPEGDecodeEngine *)(userdata);
-  auto *sample_fifo = play_ctx->audio_sample_fifo.get();
-  auto &audio_codec = play_ctx->audio_codec;
-  auto &resampler = play_ctx->audio_resampler;
-  int num_channels = audio_codec.getCodecContext()->channels;
+  auto *sdl_app = (SDLApp *)(userdata);
+  assert(sdl_app->decode_engine != nullptr);
+
+  auto *sample_fifo = sdl_app->audio_sample_fifo.get();
+  auto &resampler = sdl_app->decode_engine->audio_resampler;
+  int num_channels = sdl_app->audio_spec.channels;
 
   const int num_samples_of_stream = len / sizeof(int16_t);
   int num_samples_need = num_samples_of_stream;
@@ -232,7 +247,7 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
       break;
     } else {
       // if samples in fifo not enough, get frame and push samples to fifo
-      auto *frame = play_ctx->pullAudioFrame();
+      auto *frame = sdl_app->decode_engine->pullAudioFrame();
       ON_SCOPE_EXIT([&frame] {
         if (frame != nullptr) {
           av_frame_unref(frame);
@@ -277,6 +292,7 @@ int main(int argc, char *argv[]) {
   engine.start();
 
   SDLApp sdl_app;
+  sdl_app.decode_engine = &engine;
   ret = sdl_app.onInit();
   RETURN_IF_ERROR_LOG(ret, "sdl init failed\n");
 
@@ -288,7 +304,7 @@ int main(int argc, char *argv[]) {
   wanted_specs.silence = 0;
   wanted_specs.samples = 1024;
   wanted_specs.callback = audioCallback;
-  wanted_specs.userdata = &engine;
+  wanted_specs.userdata = &sdl_app;
 
   ret = sdl_app.onOpenAudioDevice(wanted_specs, specs);
   RETURN_IF_ERROR_LOG(ret, "sdl open audio device failed\n");
