@@ -17,9 +17,24 @@
 #include "utils/clock.h"
 #include "utils/scope_guard.h"
 #include "utils/simple_fifo.h"
+#include <cassert>
 #include <iostream>
 
 namespace ffmpeg_utils {
+
+class VideoOutputConfig {
+public:
+  int width{0};
+  int height{0};
+  AVPixelFormat pixel_format{AVPixelFormat::AV_PIX_FMT_NONE};
+};
+
+class AudioOutputConfig {
+public:
+  int num_channels{0};
+  int channel_layout{AV_CH_LAYOUT_MONO};
+  int sample_rate{0};
+};
 
 enum class DecodeEngineState { kStopped = 0, kStarting, kDecoding, kStopping };
 
@@ -36,11 +51,8 @@ public:
     ret = prepareCodecs();
     RETURN_IF_ERROR_LOG(ret, "Prepare codecs failed\n");
 
-    ret = prepareImageConverter();
-    RETURN_IF_ERROR_LOG(ret, "Prepare image converter failed\n");
-
-    ret = prepareAudioResampler();
-    RETURN_IF_ERROR_LOG(ret, "Prepare audio resampler failed\n");
+    initVideoOutputConfig();
+    initAudioOutputConfig();
 
     audio_sample_fifo =
         std::make_unique<AudioSampleFIFO>(1024 * audio_codec_ctx->channels);
@@ -51,10 +63,25 @@ public:
 
   bool isOpenedOk() const { return is_opened_ok_; }
 
-  int start() {
+  VideoOutputConfig getInputFileVideoConfig() const { return video_config_; }
+
+  AudioOutputConfig getInputFileAudioConfig() const { return audio_config_; }
+
+  int start() { return start(nullptr, nullptr); }
+
+  int start(VideoOutputConfig *video_config, AudioOutputConfig *audio_config) {
     if (!isOpenedOk()) {
       return -1;
     }
+
+    if (video_config != nullptr) {
+      prepareImageConverter(video_config);
+    }
+
+    if (audio_config != nullptr) {
+      prepareAudioResampler(audio_config);
+    }
+
     state_.store(DecodeEngineState::kStarting);
 
     startThreads();
@@ -99,6 +126,79 @@ public:
     return frame;
   }
 
+  //
+  /**
+   * pull audio samples with target audio config
+   * @param out_num_samples_per_channel the number of samples you wanted
+   * @param out_num_channels the number of channels you wanted
+   * @param out_buffer buffer to hold this samples
+   * @return {number of output samples, last audio frame pts(seconds)}
+   * @note only support int16 format
+   */
+  std::pair<int, double> pullAudioSamples(size_t out_num_samples_per_channel,
+                                          size_t out_num_channels,
+                                          int16_t *out_buffer) {
+
+    const auto total_need_samples =
+        out_num_samples_per_channel * out_num_channels;
+    auto num_samples_need = total_need_samples;
+    auto *sample_fifo = audio_sample_fifo.get();
+    int sample_index = 0;
+    int16_t s = 0;
+
+    auto getSampleFromFIFO = [&]() {
+      for (; num_samples_need > 0;) {
+        if (sample_fifo->pop(s)) {
+          out_buffer[sample_index++] = s;
+          --num_samples_need;
+        } else {
+          break;
+        }
+      }
+    };
+
+    auto resampleAudioAndPushToFIFO = [&](AVFrame *frame) {
+      assert(frame->channels == audio_config_.num_channels);
+
+      int num_samples_out_per_channel = audio_resampler.convert(
+          (const uint8_t **)frame->data, frame->nb_samples);
+      int num_samples_total = num_samples_out_per_channel * frame->channels;
+      auto *int16_resample_data =
+          reinterpret_cast<int16_t *>(audio_resampler.resample_data[0]);
+      for (int i = 0; i < num_samples_total; ++i) {
+        sample_fifo->push(std::move(int16_resample_data[i]));
+      }
+    };
+
+    for (;;) {
+      // try to get samples from fifo
+      getSampleFromFIFO();
+
+      if (num_samples_need <= 0) {
+        break;
+      } else {
+        auto *frame = pullAudioFrame();
+        ON_SCOPE_EXIT([&frame] {
+          if (frame != nullptr) {
+            av_frame_unref(frame);
+            av_frame_free(&frame);
+          }
+        });
+
+        if (frame == nullptr) {
+          printf("no audio frame, set remains to zero\n");
+          auto remain = total_need_samples - num_samples_need;
+          std::fill_n(out_buffer + num_samples_need, remain, 0);
+          return {remain, last_audio_frame_pts_};
+        } else {
+          last_audio_frame_pts_ = frame->pts * av_q2d(audio_stream->time_base);
+          resampleAudioAndPushToFIFO(frame);
+        }
+      }
+    }
+    return {out_num_samples_per_channel, last_audio_frame_pts_};
+  }
+
   DecodeEngineState state() const { return state_; }
 
   FFMPEGDemuxer demuxer;
@@ -124,8 +224,6 @@ public:
   using AudioSampleFIFO = utils::SimpleFIFO<int16_t>;
   std::unique_ptr<AudioSampleFIFO> audio_sample_fifo;
 
-  int64_t last_video_frame_pos = 0; // AV_TIME_BASE
-
 private:
   static constexpr size_t MAX_AUDIOQ_SIZE = (5 * 16 * 1024);
   static constexpr size_t MAX_VIDEOQ_SIZE = (5 * 256 * 1024);
@@ -149,24 +247,10 @@ private:
   int64_t seek_rel_{0}; // AV_TIME_BASE based
   AVPacket seek_packet_{.stream_index = FF_SEEK_PACKET_INDEX}; // as a event
 
-  void setClockAt(utils::Clock &clock, double pts, double time) {
-    clock.pts = pts;
-    clock.last_updated = time;
-    //    printf("after set :%lf\n", getAudioClock());
-  }
+  double last_audio_frame_pts_{0}; // based on seconds
 
-  void setClock(utils::Clock &clock, double pts) {
-    setClockAt(clock, pts, (double)av_gettime() / 1000000.0);
-  }
-
-  //  double getAudioClock() const { return getClock(audio_clock_t_); }
-  //
-  //  double getVideoClock() const { return getClock(video_clock_t_); }
-  //
-  //  double getClock(const utils::Clock &c) const {
-  //    double time = (double)av_gettime() / 1000000.0;
-  //    return c.pts + time - c.last_updated;
-  //  }
+  VideoOutputConfig video_config_{};
+  AudioOutputConfig audio_config_{};
 
   void startThreads() {
     demux_thread_ = std::make_unique<std::thread>(
@@ -235,24 +319,37 @@ private:
     return ret;
   }
 
-  int prepareImageConverter() {
-    constexpr static AVPixelFormat dst_format =
-        AVPixelFormat::AV_PIX_FMT_YUV420P;
-
-    return img_conv.prepare(video_codec_ctx->width, video_codec_ctx->height,
-                            video_codec_ctx->pix_fmt, video_codec_ctx->width,
-                            video_codec_ctx->height, dst_format, SWS_BILINEAR,
-                            nullptr, nullptr, nullptr);
+  void initVideoOutputConfig() {
+    if (video_codec_ctx != nullptr) {
+      video_config_.width = video_codec_ctx->width;
+      video_config_.height = video_codec_ctx->height;
+      video_config_.pixel_format = video_codec_ctx->pix_fmt;
+    }
   }
 
-  int prepareAudioResampler() {
-    int max_frames_size = audio_codec_ctx->sample_rate * 3; // 3s samples
+  void initAudioOutputConfig() {
+    if (audio_codec_ctx != nullptr) {
+      audio_config_.num_channels = audio_codec_ctx->channels;
+      audio_config_.channel_layout = audio_codec_ctx->channel_layout;
+      audio_config_.sample_rate = audio_codec_ctx->sample_rate;
+    }
+  }
+
+  int prepareImageConverter(VideoOutputConfig *video_config) {
+    assert(video_config != nullptr);
+    return img_conv.prepare(video_codec_ctx->width, video_codec_ctx->height,
+                            video_codec_ctx->pix_fmt, video_config->width,
+                            video_config->height, video_config->pixel_format,
+                            SWS_BILINEAR, nullptr, nullptr, nullptr);
+  }
+
+  int prepareAudioResampler(AudioOutputConfig *audio_config) {
+    int max_frames_size = audio_config->sample_rate * 3; // 3s samples
     return audio_resampler.prepare(
-        audio_codec_ctx->channels, audio_codec_ctx->channels,
-        audio_codec_ctx->channel_layout, audio_codec_ctx->channel_layout,
-        audio_codec_ctx->sample_rate, audio_codec_ctx->sample_rate,
-        audio_codec_ctx->sample_fmt, AVSampleFormat::AV_SAMPLE_FMT_S16,
-        max_frames_size);
+        audio_codec_ctx->channels, audio_config->num_channels,
+        audio_codec_ctx->channel_layout, audio_config->channel_layout,
+        audio_codec_ctx->sample_rate, audio_config->sample_rate,
+        audio_codec_ctx->sample_fmt, AV_SAMPLE_FMT_S16, max_frames_size);
   }
 
   int seekToNearestPreIFramePos(int64_t seek_pos, int64_t seek_rel,
@@ -319,9 +416,6 @@ private:
       // sleep if packet size in queue is very large
       if (video_packet_sync_que.totalPacketSize() >= MAX_VIDEOQ_SIZE ||
           audio_packet_sync_que.totalPacketSize() >= MAX_AUDIOQ_SIZE) {
-        std::cout << "wait packet queue to has space:"
-                  << video_packet_sync_que.totalPacketSize() << ","
-                  << audio_packet_sync_que.totalPacketSize() << std::endl;
         std::this_thread::sleep_for(10ms);
         continue;
       }
@@ -468,11 +562,36 @@ private:
        * wait if queue is full, this thread never quit if stuck here
        * you need flush queue before stop this thread
        */
-      out_frame_queue.waitAndPush(out_frame);
+      if (codec.getCodecContext()->codec_type ==
+          AVMediaType::AVMEDIA_TYPE_VIDEO) {
+        convertVideoFrameAndPushToQueue(out_frame, out_frame_queue);
+      } else if (codec.getCodecContext()->codec_type ==
+                 AVMediaType::AVMEDIA_TYPE_AUDIO) {
+
+        /**
+         * push audio frame to queue directly
+         * resample will be done when call pullAudioSamples()
+         */
+        out_frame_queue.waitAndPush(out_frame);
+      }
     }
 
     return 0;
   };
+
+  void convertVideoFrameAndPushToQueue(AVFrame *frame,
+                                       WaitableFrameQueue &out_frame_queue) {
+    //    out_frame_queue.waitAndPush(frame);
+    //    return;
+    auto r = img_conv.convert(frame);
+    if (r.first != -1 && r.second != nullptr) {
+      std::cout << "convert pts:" << frame->pts << std::endl;
+      out_frame_queue.waitAndPush(r.second);
+    } else {
+      printf("convert failed");
+      out_frame_queue.waitAndPush(frame);
+    }
+  }
 };
 
 } // namespace ffmpeg_utils

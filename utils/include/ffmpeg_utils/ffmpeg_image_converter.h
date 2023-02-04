@@ -39,6 +39,10 @@ public:
   }
 
   std::pair<int, AVFrame *> convert(const AVFrame *in_frame) {
+    if(sws_ctx == nullptr || frame == nullptr){
+      return {-1, nullptr};
+    }
+
     frame->pict_type = in_frame->pict_type;
     frame->pts = in_frame->pts;
     frame->pkt_dts = in_frame->pkt_dts;

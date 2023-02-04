@@ -205,6 +205,10 @@ public:
     });
 
     if (video_frame == nullptr) {
+      std::cout << "xxxx" << std::endl;
+      std::cout << engine->video_packet_sync_que.size() << std::endl;
+      std::cout << engine->video_frame_sync_que.size() << std::endl;
+      std::cout << engine->audio_frame_sync_que.size() << std::endl;
       scheduleRefresh(engine, 1);
     } else {
       updateVideoClockByFramePts(video_frame->pts,
@@ -216,11 +220,8 @@ public:
       scheduleRefresh(engine, real_delay_ms);
       printf("Next Scheduled Refresh:\t%dms\n\n", real_delay_ms);
 
-      // video format convert
-      auto [convert_output_width, pict] = engine->img_conv.convert(video_frame);
-
       // render picture
-      onLoop(pict);
+      onLoop(video_frame);
       onRender();
     }
   }
@@ -229,6 +230,10 @@ public:
                                   const AVRational &time_base) {
     clock.setAudioClock(static_cast<double>(frame_pts) * av_q2d(time_base) +
                         audio_hw_delay);
+  }
+
+  void updateAudioClock(double frame_pts) {
+    clock.setAudioClock(frame_pts + audio_hw_delay);
   }
 
   void updateVideoClockByFramePts(int64_t frame_pts,
@@ -258,68 +263,14 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
   auto *sdl_app = (SDLApp *)(userdata);
   assert(sdl_app->decode_engine != nullptr);
 
-  auto *sample_fifo = sdl_app->audio_sample_fifo.get();
-  auto &resampler = sdl_app->decode_engine->audio_resampler;
-  auto *audio_stream = sdl_app->decode_engine->audio_stream;
-  int num_channels = sdl_app->audio_spec.channels;
-
   const int num_samples_of_stream = len / sizeof(int16_t);
-  int num_samples_need = num_samples_of_stream;
-  int sample_index = 0;
-  auto *int16_stream = reinterpret_cast<int16_t *>(stream);
-  int16_t s = 0;
+  const int num_samples_per_channel =
+      num_samples_of_stream / sdl_app->audio_spec.channels;
 
-  auto getSampleFromFIFO = [&]() {
-    for (; num_samples_need > 0;) {
-      if (sample_fifo->pop(s)) {
-        int16_stream[sample_index++] = s;
-        --num_samples_need;
-      } else {
-        break;
-      }
-    }
-  };
-
-  auto resampleAudioAndPushToFIFO = [&](AVFrame *frame) {
-    int num_samples_out_per_channel =
-        resampler.convert((const uint8_t **)frame->data, frame->nb_samples);
-    int num_samples_total = num_samples_out_per_channel * num_channels;
-    auto *int16_resample_data =
-        reinterpret_cast<int16_t *>(resampler.resample_data[0]);
-    for (int i = 0; i < num_samples_total; ++i) {
-      sample_fifo->push(std::move(int16_resample_data[i]));
-    }
-  };
-
-  for (;;) {
-    // try to get samples from fifo
-    getSampleFromFIFO();
-
-    if (num_samples_need <= 0) {
-      break;
-    } else {
-      // if samples in fifo not enough, get frame and push samples to fifo
-      auto *frame = sdl_app->decode_engine->pullAudioFrame();
-      ON_SCOPE_EXIT([&frame] {
-        if (frame != nullptr) {
-          av_frame_unref(frame);
-          av_frame_free(&frame);
-        }
-      });
-
-      // there is no frame in queue, just fill remain samples to zero
-      if (frame == nullptr) {
-        printf("no audio frame, set zeros\n");
-        std::fill_n(int16_stream, num_samples_need, 0);
-        return;
-      } else {
-        resampleAudioAndPushToFIFO(frame);
-
-        sdl_app->updateAudioClockByFramePts(frame->pts,
-                                            audio_stream->time_base);
-      }
-    }
-  }
+  auto [num_sample_out, last_pts] = sdl_app->decode_engine->pullAudioSamples(
+      num_samples_per_channel, sdl_app->audio_spec.channels,
+      (int16_t *)(stream));
+  sdl_app->updateAudioClock(last_pts);
 }
 
 void printHelpMenu() {
@@ -344,8 +295,6 @@ int main(int argc, char *argv[]) {
   int ret = engine.openFile(infile);
   RETURN_IF_ERROR_LOG(ret, "engine open file failed\n");
 
-  engine.start();
-
   SDLApp sdl_app;
   sdl_app.decode_engine = &engine;
   ret = sdl_app.onInit();
@@ -363,6 +312,15 @@ int main(int argc, char *argv[]) {
 
   ret = sdl_app.onOpenAudioDevice(wanted_specs, specs);
   RETURN_IF_ERROR_LOG(ret, "sdl open audio device failed\n");
+
+  AudioOutputConfig audio_config;
+  audio_config.sample_rate = specs.freq,
+  audio_config.num_channels = specs.channels,
+  audio_config.channel_layout =
+      (specs.channels == 1) ? (AV_CH_LAYOUT_MONO) : (AV_CH_LAYOUT_STEREO);
+  VideoOutputConfig video_config = engine.getInputFileVideoConfig();
+  video_config.pixel_format = AV_PIX_FMT_YUV420P;
+  engine.start(&video_config, &audio_config);
 
   auto audio_hw_buffer_frame_size =
       specs.size / sizeof(int16_t) / specs.channels;

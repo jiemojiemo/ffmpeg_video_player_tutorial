@@ -7,6 +7,8 @@
 
 #pragma once
 #include "utils/clock_manager.h"
+
+#include <cmath>
 namespace utils {
 class AVSynchronizer {
 public:
