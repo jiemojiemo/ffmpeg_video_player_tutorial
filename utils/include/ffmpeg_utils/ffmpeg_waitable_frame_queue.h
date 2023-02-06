@@ -14,9 +14,7 @@ class WaitableFrameQueue {
 public:
   explicit WaitableFrameQueue(size_t queue_size) : queue_size_(queue_size) {}
 
-  ~WaitableFrameQueue() {
-      clear();
-  }
+  ~WaitableFrameQueue() { clear(); }
 
   size_t capacity() const { return queue_size_; }
   size_t size() const {
@@ -76,6 +74,16 @@ public:
     }
 
     has_space_cond_.notify_all();
+  }
+
+  AVFrame *front() {
+    // TODO: fix this if queue stuck on waitAndPush
+    std::lock_guard lg(mut_);
+    if (!que_.empty()) {
+      return que_.front();
+    } else {
+      return nullptr;
+    }
   }
 
 private:

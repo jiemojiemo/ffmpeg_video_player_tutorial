@@ -83,26 +83,10 @@ TEST_F(AFFMPEGDecodeEngine, CanPullVideoFrameAfterStart) {
   e.openFile(file_path);
   e.start();
 
-  AVFrame *v_frame = nullptr;
-  AVFrame *a_frame = nullptr;
-  ON_SCOPE_EXIT([&] {
-    if (v_frame != nullptr) {
-      av_frame_unref(v_frame);
-      av_frame_free(&v_frame);
-    }
-
-    if (a_frame != nullptr) {
-      av_frame_unref(a_frame);
-      av_frame_free(&a_frame);
-    }
-  });
-
   for (;;) {
-    v_frame = e.pullVideoFrame();
-    a_frame = e.pullAudioFrame();
-    if (v_frame != nullptr)
-      break;
-    else {
+    AVFrame *v_frame = nullptr;
+    AVFrame *a_frame = nullptr;
+    ON_SCOPE_EXIT([&] {
       if (v_frame != nullptr) {
         av_frame_unref(v_frame);
         av_frame_free(&v_frame);
@@ -112,10 +96,15 @@ TEST_F(AFFMPEGDecodeEngine, CanPullVideoFrameAfterStart) {
         av_frame_unref(a_frame);
         av_frame_free(&a_frame);
       }
+    });
+
+    v_frame = e.pullVideoFrame();
+    a_frame = e.pullAudioFrame();
+    if (v_frame != nullptr) {
+      ASSERT_THAT(v_frame, NotNull());
+      break;
     }
   }
-
-  ASSERT_THAT(v_frame, NotNull());
 }
 
 TEST_F(AFFMPEGDecodeEngine, CanPullAudioFrameAfterStart) {

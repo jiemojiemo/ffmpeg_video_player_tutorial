@@ -36,7 +36,13 @@ public:
   int sample_rate{0};
 };
 
-enum class DecodeEngineState { kStopped = 0, kStarting, kDecoding, kStopping };
+enum class DecodeEngineState {
+  kStopped = 0,
+  kStarting,
+  kDecoding,
+  kStopping,
+  kPaused
+};
 
 class FFMPEGDecodeEngine {
 public:
@@ -402,9 +408,7 @@ private:
     AVPacket *packet{nullptr};
     int ret = 0;
     for (;;) {
-      auto s = state();
-      if (s == DecodeEngineState::kStopping ||
-          s == DecodeEngineState::kStopped) {
+      if (canExit()) {
         break;
       }
 
@@ -456,7 +460,7 @@ private:
     auto stream_time_base = video_stream->time_base;
 
     for (;;) {
-      if (state() != DecodeEngineState::kDecoding) {
+      if (canExit()) {
         break;
       }
 
@@ -487,9 +491,7 @@ private:
     auto stream_time_base = audio_stream->time_base;
 
     for (;;) {
-      auto s = state();
-      if (s == DecodeEngineState::kStopping ||
-          s == DecodeEngineState::kStopped) {
+      if (canExit()) {
         break;
       }
 
@@ -591,6 +593,12 @@ private:
       printf("convert failed");
       out_frame_queue.waitAndPush(frame);
     }
+  }
+
+  bool canExit() const {
+    auto s = state();
+    return s == DecodeEngineState::kStopping ||
+           s == DecodeEngineState::kStopped;
   }
 };
 

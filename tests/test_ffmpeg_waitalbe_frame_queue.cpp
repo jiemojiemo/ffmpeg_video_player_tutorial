@@ -122,3 +122,11 @@ TEST_F(AWaitableFrameQueue, ClearRemoveAllFrames) {
 
   ASSERT_THAT(q.size(), Eq(0));
 }
+
+TEST_F(AWaitableFrameQueue, CanGetFrontFrame) {
+  q.waitAndPush(f);
+
+  auto front_f = q.front();
+
+  ASSERT_THAT(front_f->data[0], Eq(f->data[0]));
+}
