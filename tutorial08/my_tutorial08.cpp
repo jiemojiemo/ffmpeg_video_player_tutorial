@@ -94,6 +94,10 @@ public:
         doSeekRelative(60.0);
         break;
       }
+      case SDLK_SPACE: {
+        pause();
+        break;
+      }
       }
       break;
     }
@@ -117,32 +121,41 @@ public:
     decode_engine->seek(target_pos);
   }
 
+  void pause() {
+    paused = !paused;
+    if (paused) {
+      SDL_PauseAudioDevice(audio_device_id, 1);
+    } else {
+      SDL_PauseAudioDevice(audio_device_id, 0);
+    }
+  }
+
   void onLoop(AVFrame *pict) {
     SDL_UpdateYUVTexture(
-        texture, // the texture to update
-        nullptr, // a pointer to the rectangle of pixels to update, or NULL to
-                 // update the entire texture
+        texture,           // the texture to update
+        nullptr,           // a pointer to the rectangle of pixels to update, or
+                           // NULL to update the entire texture
         pict->data[0],     // the raw pixel data for the Y plane
-        pict->linesize[0], // the number of bytes between rows of pixel data for
-                           // the Y plane
+        pict->linesize[0], // the number of bytes between rows of pixel
+                           // data for the Y plane
         pict->data[1],     // the raw pixel data for the U plane
-        pict->linesize[1], // the number of bytes between rows of pixel data for
-                           // the U plane
+        pict->linesize[1], // the number of bytes between rows of pixel
+                           // data for the U plane
         pict->data[2],     // the raw pixel data for the V plane
-        pict->linesize[2]  // the number of bytes between rows of pixel data for
-                           // the V plane
+        pict->linesize[2]  // the number of bytes between rows of pixel
+                           // data for the V plane
     );
   }
 
   void onRender() {
     SDL_RenderClear(renderer);
-    SDL_RenderCopy(
-        renderer, // the rendering context
-        texture,  // the source texture
-        NULL, // the source SDL_Rect structure or NULL for the entire texture
-        NULL  // the destination SDL_Rect structure or NULL for the entire
-              // rendering target; the texture will be stretched to fill the
-              // given rectangle
+    SDL_RenderCopy(renderer, // the rendering context
+                   texture,  // the source texture
+                   NULL,     // the source SDL_Rect structure or NULL for the
+                             // entire texture
+                   NULL      // the destination SDL_Rect structure or NULL for
+                             // the entire rendering target; the texture will
+                             // be stretched to fill the given rectangle
     );
     SDL_RenderPresent(renderer);
   }
@@ -196,6 +209,11 @@ public:
                            engine->video_codec_ctx->height);
     }
 
+    if (paused) {
+      scheduleRefresh(engine, 1);
+      return;
+    }
+
     auto *video_frame = engine->pullVideoFrame();
     ON_SCOPE_EXIT([&video_frame] {
       if (video_frame != nullptr) {
@@ -205,11 +223,8 @@ public:
     });
 
     if (video_frame == nullptr) {
-      std::cout << "xxxx" << std::endl;
-      std::cout << engine->video_packet_sync_que.size() << std::endl;
-      std::cout << engine->video_frame_sync_que.size() << std::endl;
-      std::cout << engine->audio_frame_sync_que.size() << std::endl;
       scheduleRefresh(engine, 1);
+      return;
     } else {
       updateVideoClockByFramePts(video_frame->pts,
                                  engine->video_stream->time_base);
@@ -257,6 +272,7 @@ private:
   SDL_Renderer *renderer{nullptr};
   SDL_Texture *texture{nullptr};
   SDL_AudioDeviceID audio_device_id{0};
+  bool paused = false;
 };
 
 void audioCallback(void *userdata, Uint8 *stream, int len) {
