@@ -27,19 +27,21 @@ public:
       return -1;
     }
 
-    int num_bytes = av_image_get_buffer_size(dstFormat, dstW, dstH, kAlign);
-
-    frame_buffer = (uint8_t *)av_malloc(num_bytes * sizeof(uint8_t));
     frame = av_frame_alloc();
     frame->width = dstW;
     frame->height = dstH;
     frame->format = dstFormat;
-    return av_image_fill_arrays(frame->data, frame->linesize, frame_buffer,
-                                dstFormat, dstW, dstH, kAlign);
+    frame->format = (int)dstFormat;
+    frame->width = dstW;
+    frame->height = dstH;
+    frame->channels = 0;
+    frame->channel_layout = 0;
+    frame->nb_samples = 0;
+    return av_frame_get_buffer(frame, 16);
   }
 
   std::pair<int, AVFrame *> convert(const AVFrame *in_frame) {
-    if(sws_ctx == nullptr || frame == nullptr){
+    if (sws_ctx == nullptr || frame == nullptr) {
       return {-1, nullptr};
     }
 
@@ -62,17 +64,13 @@ public:
       sws_freeContext(sws_ctx);
       sws_ctx = nullptr;
     }
-    if (frame_buffer != nullptr) {
-      av_free(frame_buffer);
-      frame_buffer = nullptr;
-    }
     if (frame != nullptr) {
       av_frame_free(&frame);
       frame = nullptr;
     }
   }
 
-  constexpr static int kAlign = 32;
+  constexpr static int kAlign = 16;
   struct SwsContext *sws_ctx{nullptr};
   AVFrame *frame{nullptr};
   uint8_t *frame_buffer{nullptr};
