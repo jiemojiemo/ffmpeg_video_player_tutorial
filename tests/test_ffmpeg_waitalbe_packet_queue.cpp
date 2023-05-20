@@ -3,7 +3,7 @@
 //
 #include <gmock/gmock.h>
 
-#include "ffmpeg_utils/ffmpeg_waitable_packet_queue.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_waitable_packet_queue.h"
 
 using namespace testing;
 using namespace std::literals;
@@ -164,8 +164,7 @@ TEST_F(AWaitablePacketQueue, ClearRemoveAllPackets) {
   ASSERT_THAT(q.size(), Eq(0));
 }
 
-TEST_F(AWaitablePacketQueue, ClearResetTotalPacketSizeToZero)
-{
+TEST_F(AWaitablePacketQueue, ClearResetTotalPacketSizeToZero) {
   q.tryPush(pkt);
   q.tryPush(pkt);
   ASSERT_THAT(q.totalPacketSize(), Eq(pkt->size * 2));

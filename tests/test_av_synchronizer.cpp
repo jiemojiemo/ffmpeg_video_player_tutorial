@@ -3,7 +3,7 @@
 //
 #include <gmock/gmock.h>
 
-#include "utils/av_synchronizer.h"
+#include "j_video_player/utils/av_synchronizer.h"
 
 using namespace testing;
 using namespace utils;

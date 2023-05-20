@@ -5,8 +5,8 @@
 #ifndef FFMPEG_VIDEO_PLAYER_CLOCK_MANAGER_H
 #define FFMPEG_VIDEO_PLAYER_CLOCK_MANAGER_H
 #pragma once
-#include "ffmpeg_utils/ffmpeg_headers.h"
-#include "utils/clock.h"
+#include "../ffmpeg_utils/ffmpeg_headers.h"
+#include "clock.h"
 
 namespace utils {
 class ClockManager {

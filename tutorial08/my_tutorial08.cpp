@@ -1,9 +1,9 @@
 //
 // Created by user on 1/22/23.
 //
-#include "ffmpeg_utils/ffmpeg_decode_engine.h"
-#include "utils/av_synchronizer.h"
-#include "utils/clock_manager.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_decode_engine.h"
+#include "j_video_player/utils/av_synchronizer.h"
+#include "j_video_player/utils/clock_manager.h"
 #include <SDL2/SDL.h>
 #include <cassert>
 

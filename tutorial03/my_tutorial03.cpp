@@ -1,7 +1,7 @@
 //
 // Created by user on 1/18/23.
 //
-#include "ffmpeg_utils/ffmpeg_decoder_context.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_decoder_context.h"
 #include <SDL2/SDL.h>
 
 #include <queue>

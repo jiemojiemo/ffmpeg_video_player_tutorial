@@ -6,18 +6,18 @@
 #define FFMPEG_VIDEO_PLAYER_FFMPEG_DECODER_CONTEXT_H
 
 #pragma once
-#include "ffmpeg_utils/ffmpeg_audio_resampler.h"
-#include "ffmpeg_utils/ffmpeg_codec.h"
-#include "ffmpeg_utils/ffmpeg_demuxer.h"
-#include "ffmpeg_utils/ffmpeg_frame_queue.h"
-#include "ffmpeg_utils/ffmpeg_headers.h"
-#include "ffmpeg_utils/ffmpeg_image_converter.h"
-#include "ffmpeg_utils/ffmpeg_packet_queue.h"
-#include "ffmpeg_utils/ffmpeg_waitable_frame_queue.h"
-#include "ffmpeg_utils/ffmpeg_waitable_packet_queue.h"
+#include "../../j_video_player/utils/simple_fifo.h"
+#include "../../j_video_player/utils/waitable_queue.h"
+#include "ffmpeg_audio_resampler.h"
+#include "ffmpeg_codec.h"
+#include "ffmpeg_demuxer.h"
+#include "ffmpeg_frame_queue.h"
+#include "ffmpeg_headers.h"
+#include "ffmpeg_image_converter.h"
+#include "ffmpeg_packet_queue.h"
+#include "ffmpeg_waitable_frame_queue.h"
+#include "ffmpeg_waitable_packet_queue.h"
 #include "ringbuffer.hpp"
-#include "utils/simple_fifo.h"
-#include "utils/waitable_queue.h"
 
 #include <string>
 

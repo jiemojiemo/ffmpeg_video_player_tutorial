@@ -1,9 +1,9 @@
 //
 // Created by user on 1/22/23.
 //
-#include "ffmpeg_utils/ffmpeg_decoder_context.h"
-#include "utils/clock.h"
-#include "utils/scope_guard.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_decoder_context.h"
+#include "j_video_player/utils/clock.h"
+#include "j_video_player/utils/scope_guard.h"
 #include <SDL2/SDL.h>
 
 #include <cmath>

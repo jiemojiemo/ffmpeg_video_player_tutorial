@@ -3,7 +3,7 @@
 //
 #include <gmock/gmock.h>
 
-#include "utils/waitable_queue.h"
+#include "j_video_player/utils/waitable_queue.h"
 
 using namespace testing;
 using namespace utils;

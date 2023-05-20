@@ -1,7 +1,7 @@
 //
 // Created by user on 1/19/23.
 //
-#include "ffmpeg_utils/ffmpeg_frame_queue.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_frame_queue.h"
 #include <gmock/gmock.h>
 
 using namespace testing;

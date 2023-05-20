@@ -3,7 +3,7 @@
 //
 #include <gmock/gmock.h>
 
-#include "ffmpeg_utils/ffmpeg_waitable_frame_queue.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_waitable_frame_queue.h"
 
 using namespace testing;
 using namespace std::literals;

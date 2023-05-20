@@ -1,7 +1,7 @@
 //
 // Created by user on 1/17/23.
 //
-#include "ffmpeg_utils/ffmpeg_codec.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_codec.h"
 #include <gmock/gmock.h>
 
 using namespace testing;

@@ -2,7 +2,7 @@
 // Created by user on 7/20/22.
 //
 
-#include "ffmpeg_utils/ffmpeg_image_converter.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_image_converter.h"
 #include <gmock/gmock.h>
 
 using namespace testing;

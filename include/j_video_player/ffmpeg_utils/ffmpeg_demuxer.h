@@ -5,15 +5,13 @@
 #ifndef FFMPEG_VIDEO_PLAYER_FFMPEG_DEMUXER_H
 #define FFMPEG_VIDEO_PLAYER_FFMPEG_DEMUXER_H
 #pragma once
-#include "ffmpeg_utils/ffmpeg_common_utils.h"
-#include "ffmpeg_utils/ffmpeg_headers.h"
+#include "ffmpeg_common_utils.h"
+#include "ffmpeg_headers.h"
 #include <string>
 namespace ffmpeg_utils {
 class FFMPEGDemuxer {
 public:
-  ~FFMPEGDemuxer() {
-    close();
-  }
+  ~FFMPEGDemuxer() { close(); }
   int openFile(const std::string &file_path) {
     int ret =
         avformat_open_input(&format_ctx_, file_path.c_str(), NULL, NULL); // [2]
@@ -30,15 +28,14 @@ public:
     return 0;
   }
 
-  std::pair<int, AVPacket*> readPacket()
-  {
-    if(!isValid()){
+  std::pair<int, AVPacket *> readPacket() {
+    if (!isValid()) {
       return {-1, nullptr};
     }
 
     int ret = av_read_frame(format_ctx_, packet_);
 
-    if(ret != 0){
+    if (ret != 0) {
       av_packet_unref(packet_);
     }
 
@@ -47,16 +44,13 @@ public:
 
   bool isValid() const { return format_ctx_ != nullptr; }
 
-  void dumpFormat() const
-  {
-    if(isValid()){
+  void dumpFormat() const {
+    if (isValid()) {
       av_dump_format(format_ctx_, 0, format_ctx_->url, 0);
     }
   }
 
-  AVFormatContext* getFormatContext() const{
-    return format_ctx_;
-  }
+  AVFormatContext *getFormatContext() const { return format_ctx_; }
 
   int getStreamCount() const {
     if (isValid()) {
@@ -67,20 +61,19 @@ public:
 
   int getVideoStreamIndex() const { return video_stream_index_; }
 
-  AVStream* getStream(int stream_index) const{
+  AVStream *getStream(int stream_index) const {
     return format_ctx_->streams[stream_index];
   }
 
   int getAudioStreamIndex() const { return audio_stream_index_; }
 
 private:
-  void close()
-  {
+  void close() {
     if (format_ctx_) {
       avformat_close_input(&format_ctx_);
     }
 
-    if(packet_){
+    if (packet_) {
       av_packet_unref(packet_);
       av_packet_free(&packet_);
     }
@@ -102,20 +95,14 @@ private:
     return -1;
   }
 
-
-  void allocateInternalPacket()
-  {
-    packet_ = av_packet_alloc();
-  }
+  void allocateInternalPacket() { packet_ = av_packet_alloc(); }
 
   AVFormatContext *format_ctx_{nullptr};
-  AVPacket* packet_{nullptr};
+  AVPacket *packet_{nullptr};
 
   int video_stream_index_{-1};
   int audio_stream_index_{-1};
-
 };
 } // namespace ffmpeg_utils
-
 
 #endif // FFMPEG_VIDEO_PLAYER_FFMPEG_DEMUXER_H

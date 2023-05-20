@@ -3,7 +3,7 @@
 //
 #include <gmock/gmock.h>
 
-#include "ffmpeg_utils/ffmpeg_demuxer.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_demuxer.h"
 
 using namespace testing;
 using namespace ffmpeg_utils;
@@ -53,19 +53,17 @@ TEST_F(AFFMPEGDemuxer, CanFindAudioStreamIndexAfterOpenFile) {
   ASSERT_THAT(d.getAudioStreamIndex(), Eq(1));
 }
 
-TEST_F(AFFMPEGDemuxer, CanReadNextPacket)
-{
+TEST_F(AFFMPEGDemuxer, CanReadNextPacket) {
   d.openFile(file_path);
 
-  auto[ret, packet] = d.readPacket();
+  auto [ret, packet] = d.readPacket();
 
   ASSERT_THAT(ret, Eq(0));
   ASSERT_THAT(packet, NotNull());
 }
 
-TEST_F(AFFMPEGDemuxer, ReadPacketFailedIfNotOpenFile)
-{
-  auto[ret, packet] = d.readPacket();
+TEST_F(AFFMPEGDemuxer, ReadPacketFailedIfNotOpenFile) {
+  auto [ret, packet] = d.readPacket();
 
   ASSERT_THAT(ret, Eq(-1));
 }

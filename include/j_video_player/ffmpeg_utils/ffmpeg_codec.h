@@ -4,8 +4,8 @@
 
 #ifndef FFMPEG_VIDEO_PLAYER_FFMPEG_CODEC_H
 #define FFMPEG_VIDEO_PLAYER_FFMPEG_CODEC_H
-#include "ffmpeg_utils/ffmpeg_common_utils.h"
-#include "ffmpeg_utils/ffmpeg_headers.h"
+#include "ffmpeg_common_utils.h"
+#include "ffmpeg_headers.h"
 
 namespace ffmpeg_utils {
 class FFMPEGCodec {

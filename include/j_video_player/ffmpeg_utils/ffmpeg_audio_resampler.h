@@ -7,9 +7,9 @@
 
 #pragma once
 
-#include "ffmpeg_utils/ffmpeg_common_utils.h"
-#include "ffmpeg_utils/ffmpeg_format_utils.h"
-#include "ffmpeg_utils/ffmpeg_headers.h"
+#include "ffmpeg_common_utils.h"
+#include "ffmpeg_format_utils.h"
+#include "ffmpeg_headers.h"
 #include <vector>
 
 namespace ffmpeg_utils {

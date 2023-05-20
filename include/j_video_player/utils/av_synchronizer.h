@@ -6,7 +6,7 @@
 #define FFMPEG_VIDEO_PLAYER_AV_SYNCHRONIZER_H
 
 #pragma once
-#include "utils/clock_manager.h"
+#include "clock_manager.h"
 
 #include <cmath>
 namespace utils {

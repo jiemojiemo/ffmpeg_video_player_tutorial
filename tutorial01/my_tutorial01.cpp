@@ -1,10 +1,10 @@
 //
 // Created by user on 1/15/23.
 //
-#include "ffmpeg_utils/ffmpeg_codec.h"
-#include "ffmpeg_utils/ffmpeg_demuxer.h"
-#include "ffmpeg_utils/ffmpeg_headers.h"
-#include "ffmpeg_utils/ffmpeg_image_converter.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_codec.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_demuxer.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_headers.h"
+#include "j_video_player/ffmpeg_utils/ffmpeg_image_converter.h"
 
 #include <stdio.h>
 

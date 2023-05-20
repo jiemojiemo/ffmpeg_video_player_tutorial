@@ -6,7 +6,7 @@
 #define FFMPEG_VIDEO_PLAYER_FFMPEG_WAITABLE_PACKET_QUEUE_H
 #pragma once
 
-#include "ffmpeg_utils/ffmpeg_headers.h"
+#include "ffmpeg_headers.h"
 #include <queue>
 #include <thread>
 
