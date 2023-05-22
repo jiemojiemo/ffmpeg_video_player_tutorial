@@ -55,7 +55,7 @@ public:
   virtual void OnDecoderDone() = 0;
   virtual void OnFrameAvailable(AVFrame *frame) = 0;
 
-  virtual int init(const std::string &url, AVMediaType media_type) {
+  int init(const std::string &url, AVMediaType media_type) {
     url_ = url;
     media_type_ = media_type;
 
@@ -70,29 +70,7 @@ public:
     return 0;
   }
 
-  int initDemux(const std::string &url) {
-    demux_ = std::make_unique<ffmpeg_utils::FFMPEGDemuxer>();
-    int ret = demux_->openFile(url);
-    RETURN_IF_ERROR_LOG(ret, "demux_->openFile failed\n");
-    return ret;
-  }
-
-  int initCodec(AVMediaType media_type) {
-    codec_ = std::make_unique<ffmpeg_utils::FFMPEGCodec>();
-    int stream_index = (media_type == AVMEDIA_TYPE_VIDEO)
-                           ? demux_->getVideoStreamIndex()
-                           : demux_->getAudioStreamIndex();
-    auto *av_stream = demux_->getStream(stream_index);
-    if (av_stream == nullptr) {
-      printf("av_stream is nullptr\n");
-      return -1;
-    }
-    int ret =
-        codec_->prepare(av_stream->codecpar->codec_id, av_stream->codecpar);
-    RETURN_IF_ERROR_LOG(ret, "codec_->prepare failed\n");
-
-    return ret;
-  }
+  bool isInitSucc() const { return demux_->isValid() && codec_->isValid(); }
 
   void uninit() {
     stopDecodingThread();
@@ -118,6 +96,7 @@ public:
       }
     }
   }
+
 
 private:
   static void decodingThread(FFMPEGBaseDecoder *decoder) {
@@ -158,7 +137,30 @@ private:
     }
   }
 
-  bool isInitSucc() const { return demux_->isValid() && codec_->isValid(); }
+  int initDemux(const std::string &url) {
+    demux_ = std::make_unique<ffmpeg_utils::FFMPEGDemuxer>();
+    int ret = demux_->openFile(url);
+    RETURN_IF_ERROR_LOG(ret, "demux_->openFile failed\n");
+    return ret;
+  }
+
+  int initCodec(AVMediaType media_type) {
+    codec_ = std::make_unique<ffmpeg_utils::FFMPEGCodec>();
+    int stream_index = (media_type == AVMEDIA_TYPE_VIDEO)
+                           ? demux_->getVideoStreamIndex()
+                           : demux_->getAudioStreamIndex();
+    auto *av_stream = demux_->getStream(stream_index);
+    if (av_stream == nullptr) {
+      printf("av_stream is nullptr\n");
+      return -1;
+    }
+    int ret =
+        codec_->prepare(av_stream->codecpar->codec_id, av_stream->codecpar);
+    RETURN_IF_ERROR_LOG(ret, "codec_->prepare failed\n");
+
+    return ret;
+  }
+
   bool isDecodingThreadRunning() const {
     return decode_thread_ != nullptr && decode_thread_->joinable();
   }
