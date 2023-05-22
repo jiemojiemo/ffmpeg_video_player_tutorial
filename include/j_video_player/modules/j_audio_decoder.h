@@ -6,9 +6,11 @@
 #define FFMPEG_VIDEO_PLAYER_J_AUDIO_DECODER_H
 
 #include "j_video_player/ffmpeg_utils/ffmpeg_audio_resampler.h"
+#include "j_video_player/modules/j_audio_render.h"
 #include "j_video_player/modules/j_ffmpeg_base_decoder.h"
 
 namespace j_video_player {
+class IAudioRender;
 class AudioDecoder : public FFMPEGBaseDecoder {
 public:
   AudioDecoder(const std::string &file_path) {
@@ -16,6 +18,10 @@ public:
   }
 
   ~AudioDecoder() override { uninit(); }
+
+  void setRender(std::shared_ptr<IAudioRender> render) {
+    audio_render_ = std::move(render);
+  }
 
   void onPrepareDecoder() override {
     if (isInitSucc()) {
@@ -34,10 +40,26 @@ public:
           in_num_channels, out_num_channels, in_channel_layout,
           out_channel_layout, in_sample_rate, out_sample_rate, in_sample_format,
           out_sample_format, max_frames_size);
+
+      if (audio_render_) {
+        audio_render_->initAudioRender();
+      }
     }
   }
   void OnDecoderDone() override { audio_resampler_ = nullptr; }
-  void OnFrameAvailable(AVFrame *frame) override { (void)(frame); }
+  void OnFrameAvailable(AVFrame *frame) override {
+    // resample frame and push to audio render
+    if (frame && audio_resampler_) {
+      int num_samples_out_per_channel = audio_resampler_->convert(
+          (const uint8_t **)frame->data, frame->nb_samples);
+      int num_total_samples = num_samples_out_per_channel * frame->channels;
+      if (audio_render_) {
+        auto *int16_resample_data =
+            reinterpret_cast<int16_t *>(audio_resampler_->resample_data[0]);
+        audio_render_->renderAudioData(int16_resample_data, num_total_samples);
+      }
+    }
+  }
 
   // ---- testing ----
   ffmpeg_utils::FFMPEGAudioResampler *getResampler() const {
@@ -46,6 +68,7 @@ public:
 
 private:
   std::unique_ptr<ffmpeg_utils::FFMPEGAudioResampler> audio_resampler_{nullptr};
+  std::shared_ptr<IAudioRender> audio_render_{nullptr};
 };
 } // namespace j_video_player
 

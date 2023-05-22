@@ -7,9 +7,11 @@
 #include "j_video_player/modules/j_audio_render.h"
 #include "j_video_player/modules/j_video_render.h"
 #include "j_video_player/utils/simple_fifo.h"
+#include "ringbuffer.hpp"
 #include <SDL2/SDL.h>
-#include <vector>
+#include <fstream>
 #include <mutex>
+#include <vector>
 
 namespace j_video_player {
 class SDL2Render : public IAudioRender, public IVideoRender {
@@ -18,14 +20,15 @@ public:
   void initAudioRender() override {
     initSDL2();
     initAudioDevice();
-    initAudioFIFO();
   }
-  void clearAudioCache() override {}
+  void clearAudioCache() override { cleanupFIFO(); }
   void renderAudioData(int16_t *data, int nb_samples) override {
-    if (audio_sample_fifo_) {
-      for (int i = 0; i < nb_samples; i++) {
-        audio_sample_fifo_->push(std::move(data[i]));
-      }
+    for (; audio_sample_buffer_.writeAvailable() < (size_t)(nb_samples);) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    for (int i = 0; i < nb_samples; i++) {
+      audio_sample_buffer_.insert(data[i]);
     }
   }
 
@@ -42,6 +45,13 @@ public:
   void uninit() override { cleanup(); }
 
   void cleanup() {
+    cleanupFIFO();
+    cleanupSDL();
+  }
+
+  void cleanupFIFO() { audio_sample_buffer_.producerClear(); }
+
+  void cleanupSDL() {
     if (texture_) {
       SDL_DestroyTexture(texture_);
       texture_ = nullptr;
@@ -65,7 +75,7 @@ public:
     SDL_Quit();
   }
 
-  size_t getFIFOSize() const { return audio_sample_fifo_->size(); }
+  size_t getFIFOSize() const { return audio_sample_buffer_.readAvailable(); }
 
 private:
   void initSDL2() {
@@ -118,26 +128,25 @@ private:
       printf("Failed to open audio: %s", SDL_GetError());
       return;
     }
-  }
 
-  void initAudioFIFO() {
-    audio_sample_fifo_ = std::make_unique<AudioSampleFIFO>(audio_spec.samples *
-                                                           audio_spec.channels);
+    SDL_PauseAudioDevice(audio_device_id, 0);
   }
 
   static void audioCallback(void *userdata, Uint8 *stream, int len) {
-    auto* self = (SDL2Render*)(userdata);
-    auto* out_buffer = (int16_t*)(stream);
+    auto *self = (SDL2Render *)(userdata);
+    auto *out_buffer = (int16_t *)(stream);
     auto total_need_samples = len / sizeof(int16_t);
     auto num_samples_need = total_need_samples;
     int sample_index = 0;
-    int16_t s = 0;
+
+    std::fill_n(out_buffer, total_need_samples, 0);
 
     auto getSampleFromFIFO = [&]() {
       for (; num_samples_need > 0;) {
-        if (self->audio_sample_fifo_->pop(s)) {
-          out_buffer[sample_index++] = s;
+        if (auto s = self->audio_sample_buffer_.peek()) {
+          out_buffer[sample_index++] = *s;
           --num_samples_need;
+          self->audio_sample_buffer_.remove();
         } else {
           break;
         }
@@ -145,9 +154,8 @@ private:
     };
 
     getSampleFromFIFO();
-    if(num_samples_need > 0){
-      auto remain = total_need_samples - num_samples_need;
-      std::fill_n(out_buffer + sample_index, remain, 0);
+    if (num_samples_need > 0) {
+      printf("underrun\n");
     }
   }
 
@@ -186,8 +194,9 @@ private:
   SDL_Texture *texture_{nullptr};
   SDL_AudioDeviceID audio_device_id{0};
   SDL_AudioSpec audio_spec;
-  using AudioSampleFIFO = utils::SimpleFIFO<int16_t>;
-  std::unique_ptr<AudioSampleFIFO> audio_sample_fifo_;
+  constexpr static int kMaxAudioSampleSize = 8192 * 2 * 2;
+
+  jnk0le::Ringbuffer<int16_t, kMaxAudioSampleSize> audio_sample_buffer_;
 
   std::mutex mutex_;
   std::atomic<bool> is_init_{false};

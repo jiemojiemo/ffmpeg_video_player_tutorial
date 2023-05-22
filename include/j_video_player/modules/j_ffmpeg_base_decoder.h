@@ -97,7 +97,6 @@ public:
     }
   }
 
-
 private:
   static void decodingThread(FFMPEGBaseDecoder *decoder) {
     printf("decodingThread\n");
@@ -146,10 +145,10 @@ private:
 
   int initCodec(AVMediaType media_type) {
     codec_ = std::make_unique<ffmpeg_utils::FFMPEGCodec>();
-    int stream_index = (media_type == AVMEDIA_TYPE_VIDEO)
-                           ? demux_->getVideoStreamIndex()
-                           : demux_->getAudioStreamIndex();
-    auto *av_stream = demux_->getStream(stream_index);
+    stream_index_ = (media_type == AVMEDIA_TYPE_VIDEO)
+                        ? demux_->getVideoStreamIndex()
+                        : demux_->getAudioStreamIndex();
+    auto *av_stream = demux_->getStream(stream_index_);
     if (av_stream == nullptr) {
       printf("av_stream is nullptr\n");
       return -1;
@@ -171,6 +170,14 @@ private:
     std::tie(ret, pkt) = demux_->readPacket();
     ON_SCOPE_EXIT([&pkt] { av_packet_unref(pkt); });
 
+    if (pkt == nullptr) {
+      return -1;
+    }
+
+    if (stream_index_ != pkt->stream_index) {
+      return 0;
+    }
+
     if (ret != 0) {
       printf("readPacket failed\n");
       return -1;
@@ -178,23 +185,24 @@ private:
 
     while (true) {
       int ret0 = codec_->sendPacketToCodec(pkt);
-      if (ret0 == AVERROR_EOF || ret0 == AVERROR(EINVAL)) {
-        printf("sendPacketToCodec AVERROR_EOF||EINVAL\n");
-        return -1;
-      }
-
-      if (ret0 == AVERROR(EAGAIN)) {
-        printf("sendPacketToCodec EAGAIN\n");
-        return 0;
-      }
-
       if (ret0 < 0) {
         printf("sendPacketToCodec failed\n");
-        return -1;
+        return ret0;
       }
 
       ret0 = codec_->receiveFrame(frame_);
       ON_SCOPE_EXIT([this] { av_frame_unref(frame_); });
+
+      if (ret0 == AVERROR(EAGAIN)) {
+        return 0;
+      } else if (ret0 == AVERROR_EOF || ret0 == AVERROR(EINVAL)) {
+        printf("sendPacketToCodec AVERROR_EOF||EINVAL\n");
+        return -1;
+      } else if (ret0 < 0) {
+        printf("sendPacketToCodec failed\n");
+        return -1;
+      }
+
       if (ret0 == 0) {
         OnFrameAvailable(frame_);
       }
@@ -212,6 +220,7 @@ private:
   std::atomic<int64_t> position_{0};
 
   AVFrame *frame_ = nullptr;
+  int stream_index_{-1};
 
   constexpr static int64_t kTimebase = AV_TIME_BASE;
 };
