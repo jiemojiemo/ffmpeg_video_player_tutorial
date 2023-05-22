@@ -12,7 +12,11 @@ public:
   virtual void initAudioRender() = 0;
   virtual void uninit() = 0;
   virtual void clearAudioCache() = 0;
-  virtual void renderAudioData(uint8_t *data, int size) = 0;
+
+  /**
+   * interleave int16 audio samples
+   */
+  virtual void renderAudioData(int16_t *data, int nb_samples) = 0;
 };
 } // namespace j_video_player
 

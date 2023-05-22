@@ -11,7 +11,6 @@ public:
   virtual ~IVideoRender() = default;
   virtual void initVideoRender(int video_width, int video_height) = 0;
   virtual void uninit() = 0;
-  virtual void clearVideoCache() = 0;
   virtual void renderVideoData(AVFrame *frame) = 0;
 };
 } // namespace j_video_player
