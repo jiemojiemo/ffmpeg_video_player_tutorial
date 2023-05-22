@@ -62,6 +62,9 @@ public:
   int getVideoStreamIndex() const { return video_stream_index_; }
 
   AVStream *getStream(int stream_index) const {
+    if (stream_index < 0 || stream_index >= getStreamCount()) {
+      return nullptr;
+    }
     return format_ctx_->streams[stream_index];
   }
 
