@@ -10,7 +10,8 @@ using namespace ffmpeg_utils;
 
 class AFFMPEGDemuxer : public Test {
 public:
-  const std::string file_path = "/Users/user/Downloads/encode-v1/juren-30s.mp4";
+  const std::string file_path =
+      "/Users/user/Downloads/video_1280x720_30fps_20sec.mp4";
   FFMPEGDemuxer d;
 };
 
