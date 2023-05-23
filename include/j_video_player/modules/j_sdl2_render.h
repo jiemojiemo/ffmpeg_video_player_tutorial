@@ -36,9 +36,10 @@ public:
     initDisplayWindow(video_width, video_height);
   }
   void renderVideoData(AVFrame *frame) override {
-    if (is_init_) {
+    if (is_sdl2_system_init && window_ && renderer_ && texture_) {
       onLoop(frame);
       onRender();
+      std::this_thread::sleep_for(std::chrono::milliseconds(33));
     }
   }
   void uninit() override { cleanup(); }
@@ -51,27 +52,31 @@ public:
   void cleanupFIFO() { audio_sample_buffer_.producerClear(); }
 
   void cleanupSDL() {
-    if (texture_) {
-      SDL_DestroyTexture(texture_);
-      texture_ = nullptr;
-    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (is_sdl2_system_init) {
+      if (texture_) {
+        SDL_DestroyTexture(texture_);
+        texture_ = nullptr;
+      }
 
-    if (renderer_) {
-      SDL_DestroyRenderer(renderer_);
-      renderer_ = nullptr;
-    }
+      if (renderer_) {
+        SDL_DestroyRenderer(renderer_);
+        renderer_ = nullptr;
+      }
 
-    if (window_) {
-      SDL_DestroyWindow(window_);
-      window_ = nullptr;
-    }
+      if (window_) {
+        SDL_DestroyWindow(window_);
+        window_ = nullptr;
+      }
 
-    if (audio_device_id != 0) {
-      SDL_CloseAudioDevice(audio_device_id);
-      audio_device_id = 0;
-    }
+      if (audio_device_id != 0) {
+        SDL_CloseAudioDevice(audio_device_id);
+        audio_device_id = 0;
+      }
 
-    SDL_Quit();
+      SDL_Quit();
+      is_sdl2_system_init = false;
+    }
   }
 
   size_t getFIFOSize() const { return audio_sample_buffer_.readAvailable(); }
@@ -79,18 +84,23 @@ public:
 private:
   void initSDL2() {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!is_init_) {
+    if (!is_sdl2_system_init) {
       if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
         printf("Could not initialize SDL - %s\n", SDL_GetError());
         return;
       }
     }
 
-    is_init_ = true;
+    is_sdl2_system_init = true;
   }
 
   void initDisplayWindow(int video_width, int video_height) {
-    if (!is_init_) {
+    if (!is_sdl2_system_init) {
+      return;
+    }
+
+    // already init
+    if (window_ != nullptr) {
       return;
     }
 
@@ -198,7 +208,7 @@ private:
   jnk0le::Ringbuffer<int16_t, kMaxAudioSampleSize> audio_sample_buffer_;
 
   std::mutex mutex_;
-  std::atomic<bool> is_init_{false};
+  std::atomic<bool> is_sdl2_system_init{false};
 };
 } // namespace j_video_player
 #endif // FFMPEG_VIDEO_PLAYER_J_SDL2_RENDER_H
