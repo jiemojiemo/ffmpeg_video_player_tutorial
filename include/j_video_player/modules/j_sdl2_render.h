@@ -9,8 +9,7 @@
 #include "j_video_player/utils/simple_fifo.h"
 #include "ringbuffer.hpp"
 #include <SDL2/SDL.h>
-#include <fstream>
-#include <mutex>
+#include <thread>
 #include <vector>
 
 namespace j_video_player {
