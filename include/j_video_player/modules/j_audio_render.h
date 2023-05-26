@@ -12,11 +12,13 @@ public:
   virtual void initAudioRender() = 0;
   virtual void uninit() = 0;
   virtual void clearAudioCache() = 0;
+  virtual void setAudioCallback(std::function<void(uint8_t *, int)> func) = 0;
 
   /**
    * interleave int16 audio samples
    */
   virtual void renderAudioData(int16_t *data, int nb_samples) = 0;
+  virtual int getAudioCacheRemainSize() = 0;
 };
 } // namespace j_video_player
 

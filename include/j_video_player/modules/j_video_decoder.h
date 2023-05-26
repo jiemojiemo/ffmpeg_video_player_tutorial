@@ -8,6 +8,8 @@
 #include "j_video_player/ffmpeg_utils/ffmpeg_image_converter.h"
 #include "j_video_player/modules/j_ffmpeg_base_decoder.h"
 #include "j_video_player/modules/j_video_render.h"
+#include "j_video_player/utils/av_synchronizer.h"
+#include "j_video_player/utils/clock_manager.h"
 namespace j_video_player {
 class VideoDecoder : public FFMPEGBaseDecoder {
 public:
@@ -17,6 +19,10 @@ public:
 
   void setRender(std::shared_ptr<IVideoRender> render) {
     video_render_ = std::move(render);
+  }
+
+  void setAVSyncClock(std::shared_ptr<utils::ClockManager> clock) {
+    clock_ = std::move(clock);
   }
 
   void onPrepareDecoder() override {
@@ -44,6 +50,14 @@ public:
       auto result = converter_->convert(frame);
       if (result.second != nullptr) {
         if (video_render_) {
+          if (clock_) {
+            auto pts = frame->pts / (float)(AV_TIME_BASE);
+            clock_->setVideoClock(pts);
+            auto real_delay_ms =
+                (int)(av_sync_.computeTargetDelay(*clock_) * 1000);
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(real_delay_ms));
+          }
           video_render_->renderVideoData(result.second);
         }
       }
@@ -55,6 +69,8 @@ public:
 private:
   std::unique_ptr<ffmpeg_utils::FFMPEGImageConverter> converter_{nullptr};
   std::shared_ptr<IVideoRender> video_render_{nullptr};
+  std::shared_ptr<utils::ClockManager> clock_{nullptr};
+  utils::AVSynchronizer av_sync_;
 };
 } // namespace j_video_player
 

@@ -36,11 +36,13 @@ public:
     if (!isDecodingThreadRunning()) {
       return;
     }
-    position_ = static_cast<int64_t>(pos * kTimebase);
+    position_ = static_cast<int64_t>(pos * AV_TIME_BASE);
     state_ = DecoderState::kDecoding;
   }
   float getDuration() override { return 0; }
-  float getCurrentPosition() override { return position_ / (float)kTimebase; }
+  float getCurrentPosition() override {
+    return position_ / (float)AV_TIME_BASE;
+  }
   DecoderState getState() const { return state_.load(); }
   std::string getURL() const { return url_; }
   AVMediaType getMediaType() const { return media_type_; }
@@ -204,6 +206,11 @@ private:
       }
 
       if (ret0 == 0) {
+        // change frame pts to based on AV_TIME_BASE
+        // so it easy to video/audio sync
+        frame_->pts = av_rescale_q(frame_->pts,
+                                   demux_->getStream(stream_index_)->time_base,
+                                   AV_TIME_BASE_Q);
         OnFrameAvailable(frame_);
       }
 
@@ -221,8 +228,6 @@ private:
 
   AVFrame *frame_ = nullptr;
   int stream_index_{-1};
-
-  constexpr static int64_t kTimebase = AV_TIME_BASE;
 };
 
 } // namespace j_video_player

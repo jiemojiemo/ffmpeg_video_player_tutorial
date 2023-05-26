@@ -9,6 +9,7 @@
 #include "j_video_player/utils/simple_fifo.h"
 #include "ringbuffer.hpp"
 #include <SDL2/SDL.h>
+#include <functional>
 #include <thread>
 #include <vector>
 
@@ -21,6 +22,9 @@ public:
     initAudioDevice();
   }
   void clearAudioCache() override { cleanupFIFO(); }
+  int getAudioCacheRemainSize() override {
+    return audio_sample_buffer_.readAvailable();
+  }
   void renderAudioData(int16_t *data, int nb_samples) override {
     for (; audio_sample_buffer_.writeAvailable() < (size_t)(nb_samples);) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -31,6 +35,10 @@ public:
     }
   }
 
+  void setAudioCallback(std::function<void(uint8_t *, int)> func) override {
+    audio_callback_ = std::move(func);
+  }
+
   void initVideoRender(int video_width, int video_height) override {
     initSDL2();
     initDisplayWindow(video_width, video_height);
@@ -39,7 +47,6 @@ public:
     if (is_sdl2_system_init && window_ && renderer_ && texture_) {
       onLoop(frame);
       onRender();
-      std::this_thread::sleep_for(std::chrono::milliseconds(33));
     }
   }
   void uninit() override { cleanup(); }
@@ -142,30 +149,30 @@ private:
   }
 
   static void audioCallback(void *userdata, Uint8 *stream, int len) {
+
     auto *self = (SDL2Render *)(userdata);
-    auto *out_buffer = (int16_t *)(stream);
-    auto total_need_samples = len / sizeof(int16_t);
-    auto num_samples_need = total_need_samples;
-    int sample_index = 0;
+    return self->audio_callback_(stream, len);
 
-    std::fill_n(out_buffer, total_need_samples, 0);
-
-    auto getSampleFromFIFO = [&]() {
-      for (; num_samples_need > 0;) {
-        if (auto s = self->audio_sample_buffer_.peek()) {
-          out_buffer[sample_index++] = *s;
-          --num_samples_need;
-          self->audio_sample_buffer_.remove();
-        } else {
-          break;
-        }
-      }
-    };
-
-    getSampleFromFIFO();
-    if (num_samples_need > 0) {
-      printf("underrun\n");
-    }
+    //    auto *out_buffer = (int16_t *)(stream);
+    //    auto total_need_samples = len / sizeof(int16_t);
+    //    auto num_samples_need = total_need_samples;
+    //    int sample_index = 0;
+    //
+    //    std::fill_n(out_buffer, total_need_samples, 0);
+    //
+    //    auto getSampleFromFIFO = [&]() {
+    //      for (; num_samples_need > 0;) {
+    //        if (auto s = self->audio_sample_buffer_.peek()) {
+    //          out_buffer[sample_index++] = *s;
+    //          --num_samples_need;
+    //          self->audio_sample_buffer_.remove();
+    //        } else {
+    //          break;
+    //        }
+    //      }
+    //    };
+    //
+    //    getSampleFromFIFO();
   }
 
   void onLoop(AVFrame *pict) {
@@ -203,7 +210,8 @@ private:
   SDL_Texture *texture_{nullptr};
   SDL_AudioDeviceID audio_device_id{0};
   SDL_AudioSpec audio_spec;
-  constexpr static int kMaxAudioSampleSize = 8192 * 2 * 2;
+  std::function<void(uint8_t *, int)> audio_callback_{nullptr};
+  constexpr static int kMaxAudioSampleSize = 1024 * 2;
 
   jnk0le::Ringbuffer<int16_t, kMaxAudioSampleSize> audio_sample_buffer_;
 

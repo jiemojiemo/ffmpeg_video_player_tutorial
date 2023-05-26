@@ -24,17 +24,23 @@ int main(int argc, char *argv[]) {
   //  auto audio_decoder = std::make_unique<AudioDecoder>(in_file);
   auto video_decoder = std::make_unique<VideoDecoder>(in_file);
   auto video_render = std::make_shared<SDL2Render>();
-  //  auto audio_render = std::make_shared<SDL2Render>();
-  //  audio_decoder->setRender(audio_render);
-  //  audio_decoder->start();
+  auto audio_decoder = std::make_unique<AudioDecoder>(in_file);
+  auto audio_render = std::make_shared<SDL2Render>();
+
 
   // sdl2 window must init in main thread
   auto width = video_decoder->getCodecContext()->width;
   auto height = video_decoder->getCodecContext()->height;
   video_render->initVideoRender(width, height);
 
+  auto clock = std::make_shared<utils::ClockManager>();
+  video_decoder->setAVSyncClock(clock);
   video_decoder->setRender(video_render);
+  audio_decoder->setAVSyncClock(clock);
+  audio_decoder->setRender(audio_render);
+
   video_decoder->start();
+  audio_decoder->start();
 
   std::this_thread::sleep_for(std::chrono::seconds(1));
   SDL_Event event;
