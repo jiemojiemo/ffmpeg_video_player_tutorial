@@ -25,15 +25,6 @@ public:
   int getAudioCacheRemainSize() override {
     return audio_sample_buffer_.readAvailable();
   }
-  void renderAudioData(int16_t *data, int nb_samples) override {
-    for (; audio_sample_buffer_.writeAvailable() < (size_t)(nb_samples);) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-
-    for (int i = 0; i < nb_samples; i++) {
-      audio_sample_buffer_.insert(data[i]);
-    }
-  }
 
   void setAudioCallback(std::function<void(uint8_t *, int)> func) override {
     audio_callback_ = std::move(func);
@@ -149,30 +140,11 @@ private:
   }
 
   static void audioCallback(void *userdata, Uint8 *stream, int len) {
-
     auto *self = (SDL2Render *)(userdata);
-    return self->audio_callback_(stream, len);
-
-    //    auto *out_buffer = (int16_t *)(stream);
-    //    auto total_need_samples = len / sizeof(int16_t);
-    //    auto num_samples_need = total_need_samples;
-    //    int sample_index = 0;
-    //
-    //    std::fill_n(out_buffer, total_need_samples, 0);
-    //
-    //    auto getSampleFromFIFO = [&]() {
-    //      for (; num_samples_need > 0;) {
-    //        if (auto s = self->audio_sample_buffer_.peek()) {
-    //          out_buffer[sample_index++] = *s;
-    //          --num_samples_need;
-    //          self->audio_sample_buffer_.remove();
-    //        } else {
-    //          break;
-    //        }
-    //      }
-    //    };
-    //
-    //    getSampleFromFIFO();
+    std::fill_n(stream, len, 0);
+    if (self->audio_callback_) {
+      return self->audio_callback_(stream, len);
+    }
   }
 
   void onLoop(AVFrame *pict) {

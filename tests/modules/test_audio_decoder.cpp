@@ -13,10 +13,10 @@ public:
   MOCK_METHOD(void, initAudioRender, (), (override));
   void uninit() override {}
   void clearAudioCache() override {}
-  void renderAudioData(int16_t *data, int nb_samples) override {
-    (void)data;
-    (void)nb_samples;
+  void setAudioCallback(std::function<void(uint8_t *, int)> func) override {
+    (void)(func);
   }
+  int getAudioCacheRemainSize() override { return 0; }
 };
 
 class AAudioDecoder : public Test {
