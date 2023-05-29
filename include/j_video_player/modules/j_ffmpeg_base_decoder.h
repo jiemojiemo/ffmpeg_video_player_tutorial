@@ -43,6 +43,7 @@ public:
   float getCurrentPosition() override {
     return position_ / (float)AV_TIME_BASE;
   }
+  bool isPlaying() const override { return state_ == DecoderState::kDecoding; }
   DecoderState getState() const { return state_.load(); }
   std::string getURL() const { return url_; }
   AVMediaType getMediaType() const { return media_type_; }

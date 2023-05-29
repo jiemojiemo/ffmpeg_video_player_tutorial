@@ -15,6 +15,7 @@ public:
   virtual void seek(float pos) = 0;
   virtual float getDuration() = 0;
   virtual float getCurrentPosition() = 0;
+  virtual bool isPlaying() const = 0;
 };
 } // namespace j_video_player
 

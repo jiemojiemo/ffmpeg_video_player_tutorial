@@ -45,8 +45,28 @@ int main(int argc, char *argv[]) {
   for (;;) {
     SDL_WaitEvent(&event);
     switch (event.type) {
+    case SDL_KEYDOWN: {
+      switch (event.key.keysym.sym) {
+      case SDLK_SPACE: {
+        auto is_playing = audio_decoder->isPlaying();
+        if (is_playing) {
+          audio_decoder->pause();
+          video_decoder->pause();
+        } else {
+          audio_decoder->start();
+          video_decoder->start();
+        }
+        break;
+      }
+      default:
+        break;
+      }
+      break;
+    }
     case SDL_QUIT:
       video_decoder->stop();
+      audio_decoder->stop();
+
       return 0;
     }
   }
