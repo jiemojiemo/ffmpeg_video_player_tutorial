@@ -27,7 +27,6 @@ int main(int argc, char *argv[]) {
   auto audio_decoder = std::make_unique<AudioDecoder>(in_file);
   auto audio_render = std::make_shared<SDL2Render>();
 
-
   // sdl2 window must init in main thread
   auto width = video_decoder->getCodecContext()->width;
   auto height = video_decoder->getCodecContext()->height;
@@ -42,7 +41,6 @@ int main(int argc, char *argv[]) {
   video_decoder->start();
   audio_decoder->start();
 
-  std::this_thread::sleep_for(std::chrono::seconds(1));
   SDL_Event event;
   for (;;) {
     SDL_WaitEvent(&event);

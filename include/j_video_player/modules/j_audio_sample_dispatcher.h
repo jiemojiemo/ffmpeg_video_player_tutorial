@@ -15,12 +15,12 @@ public:
   size_t getAvailableReadSize() { return audio_sample_buffer_.readAvailable(); }
   void clearAudioCache() { audio_sample_buffer_.producerClear(); }
   void waitAndPushSamples(int16_t *samples, size_t nb_samples, int64_t pts) {
+    for (; audio_sample_buffer_.writeAvailable() < nb_samples;) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
     for (auto i = 0u; i < nb_samples; ++i) {
-      if (audio_sample_buffer_.writeAvailable() > 0) {
-        audio_sample_buffer_.insert({samples[i], pts});
-      } else {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
+      audio_sample_buffer_.insert({samples[i], pts});
     }
   }
 
