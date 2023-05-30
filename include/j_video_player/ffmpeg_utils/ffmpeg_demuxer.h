@@ -70,6 +70,13 @@ public:
 
   int getAudioStreamIndex() const { return audio_stream_index_; }
 
+  int seek(int64_t min_ts, int64_t ts, int64_t max_ts, int flags) {
+    if (!format_ctx_) {
+      return -1;
+    }
+    return avformat_seek_file(format_ctx_, -1, min_ts, ts, max_ts, flags);
+  }
+
 private:
   void close() {
     if (format_ctx_) {

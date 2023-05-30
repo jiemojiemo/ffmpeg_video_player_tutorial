@@ -41,21 +41,52 @@ int main(int argc, char *argv[]) {
   video_decoder->start();
   audio_decoder->start();
 
+  auto doSeekRelative = [&](float sec) {
+    auto current_pos = audio_decoder->getCurrentPosition();
+    auto target_pos = current_pos + sec;
+    printf("seek to %f\n", target_pos);
+    audio_decoder->seek(target_pos);
+    video_decoder->seek(target_pos);
+  };
+
+  auto doPauseOrPlaying = [&]() {
+    auto is_playing = audio_decoder->isPlaying();
+    if (is_playing) {
+      audio_decoder->pause();
+      video_decoder->pause();
+    } else {
+      audio_decoder->start();
+      video_decoder->start();
+    }
+  };
+
   SDL_Event event;
   for (;;) {
     SDL_WaitEvent(&event);
     switch (event.type) {
     case SDL_KEYDOWN: {
       switch (event.key.keysym.sym) {
+      case SDLK_LEFT: {
+        doSeekRelative(-5.0);
+        break;
+      }
+
+      case SDLK_RIGHT: {
+        doSeekRelative(5.0);
+        break;
+      }
+
+      case SDLK_DOWN: {
+        doSeekRelative(-60.0);
+        break;
+      }
+
+      case SDLK_UP: {
+        doSeekRelative(60.0);
+        break;
+      }
       case SDLK_SPACE: {
-        auto is_playing = audio_decoder->isPlaying();
-        if (is_playing) {
-          audio_decoder->pause();
-          video_decoder->pause();
-        } else {
-          audio_decoder->start();
-          video_decoder->start();
-        }
+        doPauseOrPlaying();
         break;
       }
       default:

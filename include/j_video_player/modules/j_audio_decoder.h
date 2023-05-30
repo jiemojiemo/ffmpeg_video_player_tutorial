@@ -44,6 +44,8 @@ public:
     }
   }
 
+  void clearCache() override { dispatcher_.clearAudioCache(); }
+
   void onPrepareDecoder() override {
     if (isInitSucc()) {
       audio_resampler_ = std::make_unique<ffmpeg_utils::FFMPEGAudioResampler>();

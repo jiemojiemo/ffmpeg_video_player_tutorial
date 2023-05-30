@@ -32,14 +32,24 @@ public:
     state_ = DecoderState::kStopped;
     uninit();
   }
-  void seek(float pos) override {
+  void seek(float seek_pos) override {
     if (!isDecodingThreadRunning()) {
       return;
     }
-    position_ = static_cast<int64_t>(pos * AV_TIME_BASE);
+    if (seek_pos < 0) {
+      seek_pos = 0;
+    }
+    if (seek_pos > getDuration()) {
+      seek_pos = getDuration();
+    }
+
+    seek_rel_ =
+        static_cast<int64_t>((seek_pos - getCurrentPosition()) * AV_TIME_BASE);
+    seek_pos_ = static_cast<int64_t>(seek_pos * AV_TIME_BASE);
     state_ = DecoderState::kDecoding;
+    printf("seek_pos_:%lld\n", seek_pos_.load());
   }
-  float getDuration() override { return 0; }
+  float getDuration() override { return duration_; }
   float getCurrentPosition() override {
     return position_ / (float)AV_TIME_BASE;
   }
@@ -53,6 +63,9 @@ public:
     }
     return nullptr;
   }
+
+  // clear cache after seek
+  virtual void clearCache() {}
 
   virtual void onPrepareDecoder() = 0;
   virtual void OnDecoderDone() = 0;
@@ -134,7 +147,6 @@ private:
 
       if (decodingOnePacket() != 0) {
         state_ = DecoderState::kPaused;
-        break;
       }
     }
   }
@@ -143,6 +155,7 @@ private:
     demux_ = std::make_unique<ffmpeg_utils::FFMPEGDemuxer>();
     int ret = demux_->openFile(url);
     RETURN_IF_ERROR_LOG(ret, "demux_->openFile failed\n");
+    duration_ = demux_->getFormatContext()->duration / (float)AV_TIME_BASE;
     return ret;
   }
 
@@ -168,6 +181,19 @@ private:
   }
 
   int decodingOnePacket() {
+    if (seek_pos_ >= 0) {
+      int ret = seekToTargetPosition(seek_pos_, seek_rel_);
+      if (ret < 0) {
+        printf("seekToTargetPosition failed\n");
+        return ret;
+      } else {
+        codec_->flush_buffers();
+        clearCache();
+        seek_pos_ = -1;
+        seek_rel_ = 0;
+      }
+    }
+
     int ret = 0;
     AVPacket *pkt = nullptr;
     std::tie(ret, pkt) = demux_->readPacket();
@@ -207,17 +233,33 @@ private:
       }
 
       if (ret0 == 0) {
-        // change frame pts to based on AV_TIME_BASE
-        // so it easy to video/audio sync
-        frame_->pts = av_rescale_q(frame_->pts,
-                                   demux_->getStream(stream_index_)->time_base,
-                                   AV_TIME_BASE_Q);
+        updateTimeStamp();
+
         OnFrameAvailable(frame_);
       }
 
       return 0;
     }
   };
+
+  void updateTimeStamp() {
+    // change frame pts to based on AV_TIME_BASE
+    // so it easy to video/audio sync
+    frame_->pts =
+        av_rescale_q(frame_->pts, demux_->getStream(stream_index_)->time_base,
+                     AV_TIME_BASE_Q);
+    position_ = frame_->pts;
+  }
+
+  int seekToTargetPosition(int64_t seek_pos, int64_t seek_rel) {
+    auto seek_flags = 0;
+    if (seek_rel < 0) {
+      seek_flags = AVSEEK_FLAG_BACKWARD;
+    }
+    auto min_ts = (seek_rel > 0) ? (seek_pos - seek_rel + 2) : (INT64_MIN);
+    auto max_ts = (seek_rel < 0) ? (seek_pos - seek_rel - 2) : (seek_pos);
+    return demux_->seek(min_ts, seek_pos, max_ts, seek_flags);
+  }
 
   std::string url_{};
   AVMediaType media_type_{AVMEDIA_TYPE_UNKNOWN};
@@ -226,6 +268,9 @@ private:
   std::unique_ptr<std::thread> decode_thread_;
   std::atomic<DecoderState> state_{DecoderState::kStopped};
   std::atomic<int64_t> position_{0};
+  std::atomic<int64_t> seek_pos_{-1};
+  std::atomic<int64_t> seek_rel_{0};
+  double duration_{0.0f};
 
   AVFrame *frame_ = nullptr;
   int stream_index_{-1};
