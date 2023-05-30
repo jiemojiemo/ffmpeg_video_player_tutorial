@@ -26,7 +26,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
             )
 endif ()
 
-
+add_subdirectory(tutorial00)
 add_subdirectory(tutorial01)
 add_subdirectory(tutorial02)
 add_subdirectory(tutorial03)
