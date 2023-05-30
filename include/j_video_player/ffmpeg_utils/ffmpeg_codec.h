@@ -42,8 +42,14 @@ public:
     return 0;
   }
 
+  bool isValid() const { return codec_context_ != nullptr && codec_ != nullptr; }
+
   int receiveFrame(AVFrame *frame) {
     return avcodec_receive_frame(codec_context_, frame);
+  }
+
+  void flush_buffers(){
+    return avcodec_flush_buffers(codec_context_);
   }
 
   const AVCodec *getCodec() const { return codec_; }

@@ -100,7 +100,8 @@ public:
   void SetUp() override { s = std::make_unique<AccurateSeeker>(e); }
   FFMPEGDecodeEngine e;
   std::unique_ptr<AccurateSeeker> s;
-  const std::string file_path = "/Users/user/Downloads/encode-v1/juren-30s.mp4";
+  const std::string file_path =
+      "/Users/user/Downloads/video_1280x720_30fps_20sec.mp4";
 };
 
 TEST_F(AAccurateSeeker, InitWithDecodeEngine) {

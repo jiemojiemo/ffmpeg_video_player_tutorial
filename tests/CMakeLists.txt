@@ -17,6 +17,10 @@ add_executable(unit_test
         test_ffmpeg_waitalbe_frame_queue.cpp
         test_waitable_queue.cpp
 
-        #        modules/test_base_decoder.cpp
+        modules/test_base_decoder.cpp
+        modules/test_audio_decoder.cpp
+        modules/test_audio_sample_dispatcher.cpp
+        modules/test_sdl2_render.cpp
+        modules/test_video_decoder.cpp
         )
 target_link_libraries(unit_test PRIVATE gmock_main j_video_player)
