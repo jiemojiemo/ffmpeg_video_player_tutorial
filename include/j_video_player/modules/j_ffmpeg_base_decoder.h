@@ -12,11 +12,7 @@
 #include "j_video_player/utils/scope_guard.h"
 #include <thread>
 namespace j_video_player {
-enum class DecoderState {
-  kDecoding,
-  kPaused,
-  kStopped,
-};
+enum class DecoderState { kDecoding, kPaused, kStopped, kSeeking };
 
 class FFMPEGBaseDecoder : public IDecoder {
 public:
@@ -46,7 +42,8 @@ public:
     seek_rel_ =
         static_cast<int64_t>((seek_pos - getCurrentPosition()) * AV_TIME_BASE);
     seek_pos_ = static_cast<int64_t>(seek_pos * AV_TIME_BASE);
-    state_ = DecoderState::kDecoding;
+    state_ = DecoderState::kSeeking;
+    seeking_ = true;
     printf("seek_pos_:%lld\n", seek_pos_.load());
   }
   float getDuration() override { return duration_; }
@@ -145,6 +142,11 @@ private:
         break;
       }
 
+      if (state_ == DecoderState::kSeeking) {
+        seek();
+        state_ = DecoderState::kDecoding;
+      }
+
       if (decodingOnePacket() != 0) {
         state_ = DecoderState::kPaused;
       }
@@ -181,19 +183,6 @@ private:
   }
 
   int decodingOnePacket() {
-    if (seek_pos_ >= 0) {
-      int ret = seekToTargetPosition(seek_pos_, seek_rel_);
-      if (ret < 0) {
-        printf("seekToTargetPosition failed\n");
-        return ret;
-      } else {
-        codec_->flush_buffers();
-        clearCache();
-        seek_pos_ = -1;
-        seek_rel_ = 0;
-      }
-    }
-
     int ret = 0;
     AVPacket *pkt = nullptr;
     std::tie(ret, pkt) = demux_->readPacket();
@@ -212,34 +201,31 @@ private:
       return -1;
     }
 
-    while (true) {
-      int ret0 = codec_->sendPacketToCodec(pkt);
-      if (ret0 < 0) {
-        printf("sendPacketToCodec failed\n");
-        return ret0;
-      }
+    ret = codec_->sendPacketToCodec(pkt);
+    if (ret == AVERROR_EOF) {
+      printf("sendPacketToCodec AVERROR_EOF\n");
+      return -1;
+    }
 
-      ret0 = codec_->receiveFrame(frame_);
+    // 1 packet may contain multiple frames
+    for (;;) {
+      auto ret0 = codec_->receiveFrame(frame_);
       ON_SCOPE_EXIT([this] { av_frame_unref(frame_); });
-
-      if (ret0 == AVERROR(EAGAIN)) {
-        return 0;
-      } else if (ret0 == AVERROR_EOF || ret0 == AVERROR(EINVAL)) {
-        printf("sendPacketToCodec AVERROR_EOF||EINVAL\n");
-        return -1;
-      } else if (ret0 < 0) {
-        printf("sendPacketToCodec failed\n");
-        return -1;
-      }
-
       if (ret0 == 0) {
         updateTimeStamp();
 
-        OnFrameAvailable(frame_);
-      }
+        // do accurate seek
+        if (skipThisFrame()) {
+          continue;
+        }
 
-      return 0;
+        OnFrameAvailable(frame_);
+      } else {
+        break;
+      }
     }
+
+    return 0;
   };
 
   void updateTimeStamp() {
@@ -249,6 +235,31 @@ private:
         av_rescale_q(frame_->pts, demux_->getStream(stream_index_)->time_base,
                      AV_TIME_BASE_Q);
     position_ = frame_->pts;
+  }
+
+  bool skipThisFrame() {
+    if (seeking_) {
+      auto current_pts = position_.load();
+      // discard frames before seek position
+      if (current_pts < seek_pos_) {
+        return true;
+      } else {
+        seeking_ = false;
+        return false;
+      }
+    }
+
+    return false;
+  }
+
+  void seek() {
+    int ret = seekToTargetPosition(seek_pos_, seek_rel_);
+    if (ret < 0) {
+      printf("seekToTargetPosition failed\n");
+    } else {
+      codec_->flush_buffers();
+      clearCache();
+    }
   }
 
   int seekToTargetPosition(int64_t seek_pos, int64_t seek_rel) {
@@ -270,6 +281,7 @@ private:
   std::atomic<int64_t> position_{0};
   std::atomic<int64_t> seek_pos_{-1};
   std::atomic<int64_t> seek_rel_{0};
+  std::atomic<bool> seeking_{false};
   double duration_{0.0f};
 
   AVFrame *frame_ = nullptr;
