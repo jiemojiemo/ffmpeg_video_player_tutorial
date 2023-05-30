@@ -3,4 +3,5 @@ ffmpeg/4.4
 sdl/2.0.20
 
 [generators]
-cmake
+CMakeDeps
+CMakeToolchain

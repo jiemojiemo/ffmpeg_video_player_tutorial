@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.10)
 
 project(ffmpeg_video_player)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()
-
 set(CMAKE_CXX_STANDARD 17)
+
+find_package(ffmpeg CONFIG REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
+
 
 if (ENABLE_ASAN)
     message(STATUS "build with ASAN")
@@ -16,10 +17,12 @@ add_subdirectory(3rdparty)
 
 add_library(j_video_player INTERFACE)
 target_include_directories(j_video_player INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(j_video_player INTERFACE Ring-Buffer farbot ${CONAN_LIBS})
+target_link_libraries(j_video_player INTERFACE Ring-Buffer farbot ffmpeg::ffmpeg SDL2::SDL2)
+
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(j_video_player INTERFACE -Wall -Wextra -Wpedantic -Werror
             -Wno-c99-extensions
+            -Wno-deprecated-declarations
             )
 endif ()
 

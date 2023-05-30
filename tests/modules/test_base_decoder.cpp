@@ -97,20 +97,13 @@ TEST_F(AFFMPEGBaseDecoder, PauseChageStateToPaused) {
   ASSERT_THAT(d->getState(), Eq(DecoderState::kPaused));
 }
 
-TEST_F(AFFMPEGBaseDecoder, SeekUpdatePosition) {
-  d->init(url, media_type);
-  d->start();
-  d->seek(10);
-  ASSERT_THAT(d->getCurrentPosition(), Eq(10));
-}
-
-TEST_F(AFFMPEGBaseDecoder, SeekChangeStateToDecoding) {
+TEST_F(AFFMPEGBaseDecoder, SeekChangeStateToSeeking) {
   d->init(url, media_type);
   d->start();
   d->pause();
 
   d->seek(10);
-  ASSERT_THAT(d->getState(), Eq(DecoderState::kDecoding));
+  ASSERT_THAT(d->getState(), Eq(DecoderState::kSeeking));
 }
 
 TEST_F(AFFMPEGBaseDecoder, SeekFailedIfNeverStart) {

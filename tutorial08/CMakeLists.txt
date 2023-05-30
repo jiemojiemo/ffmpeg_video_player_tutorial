@@ -1,2 +1,2 @@
 add_executable(my_tutorial08 my_tutorial08.cpp)
-target_link_libraries(my_tutorial08 PRIVATE j_video_player ${CONAN_LIBS})
+target_link_libraries(my_tutorial08 PRIVATE j_video_player)
