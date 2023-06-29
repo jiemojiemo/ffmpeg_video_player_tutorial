@@ -8,9 +8,9 @@
 #include "ffmpeg_headers.h"
 
 namespace ffmpeg_utils {
-class FFMPEGCodec {
+class FFmpegCodec {
 public:
-  ~FFMPEGCodec() { close(); }
+  ~FFmpegCodec() { close(); }
 
   int prepare(enum AVCodecID id, const AVCodecParameters *par) {
     codec_ = avcodec_find_decoder(id);
@@ -42,15 +42,15 @@ public:
     return 0;
   }
 
-  bool isValid() const { return codec_context_ != nullptr && codec_ != nullptr; }
+  bool isValid() const {
+    return codec_context_ != nullptr && codec_ != nullptr;
+  }
 
   int receiveFrame(AVFrame *frame) {
     return avcodec_receive_frame(codec_context_, frame);
   }
 
-  void flush_buffers(){
-    return avcodec_flush_buffers(codec_context_);
-  }
+  void flush_buffers() { return avcodec_flush_buffers(codec_context_); }
 
   const AVCodec *getCodec() const { return codec_; }
   AVCodec *getCodec() { return codec_; }

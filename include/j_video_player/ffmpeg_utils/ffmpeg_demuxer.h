@@ -9,9 +9,9 @@
 #include "ffmpeg_headers.h"
 #include <string>
 namespace ffmpeg_utils {
-class FFMPEGDemuxer {
+class FFmpegDmuxer {
 public:
-  ~FFMPEGDemuxer() { close(); }
+  ~FFmpegDmuxer() { close(); }
   int openFile(const std::string &file_path) {
     int ret =
         avformat_open_input(&format_ctx_, file_path.c_str(), NULL, NULL); // [2]

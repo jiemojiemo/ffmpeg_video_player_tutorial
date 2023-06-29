@@ -577,7 +577,7 @@ int main(int argc, char *argv[]) {
   });
 
   auto decodePacketAndPushToFrameQueue =
-      [&](WaitablePacketQueue &packet_queue, FFMPEGCodec &codec,
+      [&](WaitablePacketQueue &packet_queue, FFmpegCodec &codec,
           AVFrame *out_frame, WaitableFrameQueue &out_frame_queue,
           bool &seeking_flag, int64_t &target_seek_pos_avtimebase,
           AVRational stream_time_base) {

@@ -13,9 +13,9 @@
 #include <vector>
 
 namespace ffmpeg_utils {
-class FFMPEGAudioResampler {
+class FFmpegAudioResampler {
 public:
-  ~FFMPEGAudioResampler() { close(); }
+  ~FFmpegAudioResampler() { close(); }
   int prepare(int in_num_channels, int out_num_channels, int in_channel_layout,
               int out_channel_layout, int in_sample_rate, int out_sample_rate,
               AVSampleFormat in_sample_format, AVSampleFormat out_sample_format,

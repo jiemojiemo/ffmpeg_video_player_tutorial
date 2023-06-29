@@ -8,62 +8,62 @@
 using namespace testing;
 using namespace std::literals;
 using namespace ffmpeg_utils;
-class AFFMPEGDecodeEngine : public Test {
+class AFFmpegDecodeEngine : public Test {
 public:
   FFMPEGDecodeEngine e;
   const std::string file_path =
       "/Users/user/Downloads/video_1280x720_30fps_20sec.mp4";
 };
 
-TEST_F(AFFMPEGDecodeEngine, CanOpenFile) {
+TEST_F(AFFmpegDecodeEngine, CanOpenFile) {
   int ret = e.openFile(file_path);
   ASSERT_THAT(ret, Eq(0));
   ASSERT_TRUE(e.isOpenedOk());
 }
 
-TEST_F(AFFMPEGDecodeEngine, OpenFileFailedIfFilePathInvalid) {
+TEST_F(AFFmpegDecodeEngine, OpenFileFailedIfFilePathInvalid) {
   auto invalid_path = "xxx.mp4";
 
   ASSERT_THAT(e.openFile(invalid_path), Not(0));
   ASSERT_FALSE(e.isOpenedOk());
 }
 
-TEST_F(AFFMPEGDecodeEngine, InitDemuxerAfterOpenFile) {
+TEST_F(AFFmpegDecodeEngine, InitDemuxerAfterOpenFile) {
   e.openFile(file_path);
 
   ASSERT_TRUE(e.demuxer.isValid());
 }
 
-TEST_F(AFFMPEGDecodeEngine, InitStreamsAfterOpenFile) {
+TEST_F(AFFmpegDecodeEngine, InitStreamsAfterOpenFile) {
   e.openFile(file_path);
 
   ASSERT_THAT(e.video_stream, NotNull());
   ASSERT_THAT(e.audio_stream, NotNull());
 }
 
-TEST_F(AFFMPEGDecodeEngine, InitCodecsAfterOpenFile) {
+TEST_F(AFFmpegDecodeEngine, InitCodecsAfterOpenFile) {
   e.openFile(file_path);
 
   ASSERT_THAT(e.video_codec_ctx, NotNull());
   ASSERT_THAT(e.audio_codec_ctx, NotNull());
 }
 
-TEST_F(AFFMPEGDecodeEngine, InStoppedStateWhenInit) {
+TEST_F(AFFmpegDecodeEngine, InStoppedStateWhenInit) {
   ASSERT_THAT(e.state(), Eq(DecodeEngineState::kStopped));
 }
 
-TEST_F(AFFMPEGDecodeEngine, ChangeStateToDecodingAfterStart) {
+TEST_F(AFFmpegDecodeEngine, ChangeStateToDecodingAfterStart) {
   e.openFile(file_path);
   e.start();
 
   ASSERT_THAT(e.state(), Eq(DecodeEngineState::kDecoding));
 }
 
-TEST_F(AFFMPEGDecodeEngine, StartFailedIfNeverOpenFile) {
+TEST_F(AFFmpegDecodeEngine, StartFailedIfNeverOpenFile) {
   ASSERT_THAT(e.start(), Not(0));
 }
 
-TEST_F(AFFMPEGDecodeEngine, StartFailedNotChangeStateToDecoding) {
+TEST_F(AFFmpegDecodeEngine, StartFailedNotChangeStateToDecoding) {
   ASSERT_THAT(e.state(), Eq(DecodeEngineState::kStopped));
   int ret = e.start();
 
@@ -71,7 +71,7 @@ TEST_F(AFFMPEGDecodeEngine, StartFailedNotChangeStateToDecoding) {
   ASSERT_THAT(e.state(), Eq(DecodeEngineState::kStopped));
 }
 
-TEST_F(AFFMPEGDecodeEngine, StopChangeStateToStopped) {
+TEST_F(AFFmpegDecodeEngine, StopChangeStateToStopped) {
   e.openFile(file_path);
   e.start();
   ASSERT_THAT(e.state(), Eq(DecodeEngineState::kDecoding));
@@ -80,7 +80,7 @@ TEST_F(AFFMPEGDecodeEngine, StopChangeStateToStopped) {
   ASSERT_THAT(e.state(), Eq(DecodeEngineState::kStopped));
 }
 
-TEST_F(AFFMPEGDecodeEngine, CanPullVideoFrameAfterStart) {
+TEST_F(AFFmpegDecodeEngine, CanPullVideoFrameAfterStart) {
   e.openFile(file_path);
   e.start();
 
@@ -108,7 +108,7 @@ TEST_F(AFFMPEGDecodeEngine, CanPullVideoFrameAfterStart) {
   }
 }
 
-TEST_F(AFFMPEGDecodeEngine, CanPullAudioFrameAfterStart) {
+TEST_F(AFFmpegDecodeEngine, CanPullAudioFrameAfterStart) {
   e.openFile(file_path);
   e.start();
 
@@ -136,7 +136,7 @@ TEST_F(AFFMPEGDecodeEngine, CanPullAudioFrameAfterStart) {
   }
 }
 
-TEST_F(AFFMPEGDecodeEngine, CanSeekAbsolutely) {
+TEST_F(AFFmpegDecodeEngine, CanSeekAbsolutely) {
   e.openFile(file_path);
   e.start();
 
@@ -170,7 +170,7 @@ TEST_F(AFFMPEGDecodeEngine, CanSeekAbsolutely) {
   }
 }
 
-TEST_F(AFFMPEGDecodeEngine, CanGetInputFileVideoConfigAfterOpenFile) {
+TEST_F(AFFmpegDecodeEngine, CanGetInputFileVideoConfigAfterOpenFile) {
   e.openFile(file_path);
   auto video_config = e.getInputFileVideoConfig();
 
@@ -179,7 +179,7 @@ TEST_F(AFFMPEGDecodeEngine, CanGetInputFileVideoConfigAfterOpenFile) {
   ASSERT_THAT(video_config.pixel_format, Eq(e.video_codec_ctx->pix_fmt));
 }
 
-TEST_F(AFFMPEGDecodeEngine, CanGetInputFileAudioConfigAfterOpenFile) {
+TEST_F(AFFmpegDecodeEngine, CanGetInputFileAudioConfigAfterOpenFile) {
   e.openFile(file_path);
   auto audio_config = e.getInputFileAudioConfig();
 
@@ -189,7 +189,7 @@ TEST_F(AFFMPEGDecodeEngine, CanGetInputFileAudioConfigAfterOpenFile) {
   ASSERT_THAT(audio_config.sample_rate, Eq(e.audio_codec_ctx->sample_rate));
 }
 
-TEST_F(AFFMPEGDecodeEngine, StartWithOutputConfigPullFrameWithTargetConfig) {
+TEST_F(AFFmpegDecodeEngine, StartWithOutputConfigPullFrameWithTargetConfig) {
   e.openFile(file_path);
   auto video_config = e.getInputFileVideoConfig();
   video_config.width = 200;
@@ -226,7 +226,7 @@ TEST_F(AFFMPEGDecodeEngine, StartWithOutputConfigPullFrameWithTargetConfig) {
   }
 }
 
-TEST_F(AFFMPEGDecodeEngine,
+TEST_F(AFFmpegDecodeEngine,
        PullAudioSamplesReturnsFetchedNumberSamplesAndLastFramePts) {
   e.openFile(file_path);
   auto audio_config = e.getInputFileAudioConfig();

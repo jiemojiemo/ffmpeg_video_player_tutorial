@@ -295,7 +295,7 @@ int main(int argc, char *argv[]) {
     av_packet_unref(packet);
 
     auto decodePacketAndPushToFrameQueue =
-        [](PacketQueue &packet_queue, FFMPEGCodec &codec, AVFrame *out_frame,
+        [](PacketQueue &packet_queue, FFmpegCodec &codec, AVFrame *out_frame,
            FrameQueue &out_frame_queue) {
           auto *pkt = packet_queue.pop();
           ON_SCOPE_EXIT([&pkt] {

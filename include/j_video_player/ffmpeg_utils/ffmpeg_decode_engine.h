@@ -5,9 +5,6 @@
 #ifndef FFMPEG_VIDEO_PLAYER_FFMPEG_DECODE_ENGINE_H
 #define FFMPEG_VIDEO_PLAYER_FFMPEG_DECODE_ENGINE_H
 #pragma once
-#include "../../j_video_player/utils/clock.h"
-#include "../../j_video_player/utils/scope_guard.h"
-#include "../../j_video_player/utils/simple_fifo.h"
 #include "ffmpeg_audio_resampler.h"
 #include "ffmpeg_codec.h"
 #include "ffmpeg_demuxer.h"
@@ -17,6 +14,9 @@
 #include "ffmpeg_packet_queue.h"
 #include "ffmpeg_waitable_frame_queue.h"
 #include "ffmpeg_waitable_packet_queue.h"
+#include "j_video_player/utils/clock.h"
+#include "j_video_player/utils/scope_guard.h"
+#include "j_video_player/utils/simple_fifo.h"
 #include <cassert>
 #include <iostream>
 
@@ -207,11 +207,11 @@ public:
 
   DecodeEngineState state() const { return state_; }
 
-  FFMPEGDemuxer demuxer;
-  FFMPEGCodec video_codec;
-  FFMPEGCodec audio_codec;
+  FFmpegDmuxer demuxer;
+  FFmpegCodec video_codec;
+  FFmpegCodec audio_codec;
   FFMPEGImageConverter img_conv;
-  FFMPEGAudioResampler audio_resampler;
+  FFmpegAudioResampler audio_resampler;
 
   int video_stream_index{-1};
   int audio_stream_index{-1};
@@ -506,7 +506,7 @@ private:
   }
 
   int decodePacketAndPushToFrameQueue(WaitablePacketQueue &packet_queue,
-                                      FFMPEGCodec &codec, AVFrame *out_frame,
+                                      FFmpegCodec &codec, AVFrame *out_frame,
                                       WaitableFrameQueue &out_frame_queue,
                                       bool &seeking_flag,
                                       int64_t &target_seek_pos_avtimebase,

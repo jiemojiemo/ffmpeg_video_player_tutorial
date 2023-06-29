@@ -8,37 +8,37 @@
 using namespace testing;
 using namespace ffmpeg_utils;
 
-class AFFMPEGDemuxer : public Test {
+class AFFmpegDemuxer : public Test {
 public:
   const std::string file_path =
       "/Users/user/Downloads/video_1280x720_30fps_20sec.mp4";
-  FFMPEGDemuxer d;
+  FFmpegDmuxer d;
 };
 
-TEST_F(AFFMPEGDemuxer, CanOpenFile) {
+TEST_F(AFFmpegDemuxer, CanOpenFile) {
   int ret = d.openFile(file_path);
 
   ASSERT_THAT(ret, Eq(0));
 }
 
-TEST_F(AFFMPEGDemuxer, IsValidAfterOpenSuccessfully) {
+TEST_F(AFFmpegDemuxer, IsValidAfterOpenSuccessfully) {
   int ret = d.openFile(file_path);
 
   ASSERT_THAT(ret, Eq(0));
   ASSERT_TRUE(d.isValid());
 }
 
-TEST_F(AFFMPEGDemuxer, StreamCountIsZeroWhenInit) {
+TEST_F(AFFmpegDemuxer, StreamCountIsZeroWhenInit) {
   ASSERT_THAT(d.getStreamCount(), Eq(0));
 }
 
-TEST_F(AFFMPEGDemuxer, CanGetStreamCountAfterOpen) {
+TEST_F(AFFmpegDemuxer, CanGetStreamCountAfterOpen) {
   d.openFile(file_path);
 
   ASSERT_THAT(d.getStreamCount(), Eq(2));
 }
 
-TEST_F(AFFMPEGDemuxer, CanFindVideoStreamIndexAfterOpenFile) {
+TEST_F(AFFmpegDemuxer, CanFindVideoStreamIndexAfterOpenFile) {
   ASSERT_THAT(d.getVideoStreamIndex(), Eq(-1));
 
   d.openFile(file_path);
@@ -46,7 +46,7 @@ TEST_F(AFFMPEGDemuxer, CanFindVideoStreamIndexAfterOpenFile) {
   ASSERT_THAT(d.getVideoStreamIndex(), Eq(0));
 }
 
-TEST_F(AFFMPEGDemuxer, CanFindAudioStreamIndexAfterOpenFile) {
+TEST_F(AFFmpegDemuxer, CanFindAudioStreamIndexAfterOpenFile) {
   ASSERT_THAT(d.getAudioStreamIndex(), Eq(-1));
 
   d.openFile(file_path);
@@ -54,7 +54,7 @@ TEST_F(AFFMPEGDemuxer, CanFindAudioStreamIndexAfterOpenFile) {
   ASSERT_THAT(d.getAudioStreamIndex(), Eq(1));
 }
 
-TEST_F(AFFMPEGDemuxer, CanReadNextPacket) {
+TEST_F(AFFmpegDemuxer, CanReadNextPacket) {
   d.openFile(file_path);
 
   auto [ret, packet] = d.readPacket();
@@ -63,7 +63,7 @@ TEST_F(AFFMPEGDemuxer, CanReadNextPacket) {
   ASSERT_THAT(packet, NotNull());
 }
 
-TEST_F(AFFMPEGDemuxer, ReadPacketFailedIfNotOpenFile) {
+TEST_F(AFFmpegDemuxer, ReadPacketFailedIfNotOpenFile) {
   auto [ret, packet] = d.readPacket();
 
   ASSERT_THAT(ret, Eq(-1));

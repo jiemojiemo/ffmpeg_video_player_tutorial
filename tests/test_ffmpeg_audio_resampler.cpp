@@ -9,9 +9,9 @@
 using namespace testing;
 using namespace ffmpeg_utils;
 
-class AFFMPEGAudioResampler : public Test {
+class AFFmpegAudioResampler : public Test {
 public:
-  FFMPEGAudioResampler resampler;
+  FFmpegAudioResampler resampler;
   int in_sample_rate = 44100;
   int in_num_channels = 2;
   int in_channel_layout = AV_CH_LAYOUT_STEREO;
@@ -23,7 +23,7 @@ public:
   int max_frames_size = 1024;
 };
 
-TEST_F(AFFMPEGAudioResampler, PrepareWillInitInternalSWR) {
+TEST_F(AFFmpegAudioResampler, PrepareWillInitInternalSWR) {
   resampler.prepare(in_num_channels, out_num_channels, in_channel_layout,
                     out_channel_layout, in_sample_rate, out_sample_rate,
                     in_sample_format, out_sample_format, max_frames_size);
@@ -31,7 +31,7 @@ TEST_F(AFFMPEGAudioResampler, PrepareWillInitInternalSWR) {
   ASSERT_THAT(resampler.swr, NotNull());
 }
 
-TEST_F(AFFMPEGAudioResampler, PrepareWillInitChannelData) {
+TEST_F(AFFmpegAudioResampler, PrepareWillInitChannelData) {
   resampler.prepare(in_num_channels, out_num_channels, in_channel_layout,
                     out_channel_layout, in_sample_rate, out_sample_rate,
                     in_sample_format, out_sample_format, max_frames_size);
@@ -41,7 +41,7 @@ TEST_F(AFFMPEGAudioResampler, PrepareWillInitChannelData) {
   ASSERT_THAT(resampler.resample_data.size(), Eq(expected));
 }
 
-TEST_F(AFFMPEGAudioResampler, CanConvertAudioSamples) {
+TEST_F(AFFmpegAudioResampler, CanConvertAudioSamples) {
   resampler.prepare(in_num_channels, out_num_channels, in_channel_layout,
                     out_channel_layout, in_sample_rate, out_sample_rate,
                     in_sample_format, out_sample_format, max_frames_size);

@@ -569,7 +569,7 @@ int main(int argc, char *argv[]) {
   });
 
   auto decodePacketAndPushToFrameQueue =
-      [&](WaitablePacketQueue &packet_queue, FFMPEGCodec &codec,
+      [&](WaitablePacketQueue &packet_queue, FFmpegCodec &codec,
           AVFrame *out_frame, WaitableFrameQueue &out_frame_queue) {
         auto *pkt = packet_queue.waitAndPop();
         ON_SCOPE_EXIT([&pkt] {

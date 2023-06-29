@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
   }
 
   // create ffmpeg demuxer
-  FFMPEGDemuxer demuxer;
+  FFmpegDmuxer demuxer;
   int ret = demuxer.openFile(argv[1]);
   if (ret < 0) {
     printf("Could not open file %s\n", argv[1]);
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  FFMPEGCodec video_codec;
+  FFmpegCodec video_codec;
   auto codec_id =
       demuxer.getFormatContext()->streams[videoStream]->codecpar->codec_id;
   auto par = demuxer.getFormatContext()->streams[videoStream]->codecpar;

@@ -48,7 +48,7 @@ public:
 
   void onPrepareDecoder() override {
     if (isInitSucc()) {
-      audio_resampler_ = std::make_unique<ffmpeg_utils::FFMPEGAudioResampler>();
+      audio_resampler_ = std::make_unique<ffmpeg_utils::FFmpegAudioResampler>();
       auto codec_context = getCodecContext();
       auto in_num_channels = codec_context->channels;
       auto out_num_channels = kOutNumChannels;
@@ -84,12 +84,12 @@ public:
   }
 
   // ---- testing ----
-  ffmpeg_utils::FFMPEGAudioResampler *getResampler() const {
+  ffmpeg_utils::FFmpegAudioResampler *getResampler() const {
     return audio_resampler_.get();
   }
 
 private:
-  std::unique_ptr<ffmpeg_utils::FFMPEGAudioResampler> audio_resampler_{nullptr};
+  std::unique_ptr<ffmpeg_utils::FFmpegAudioResampler> audio_resampler_{nullptr};
   std::shared_ptr<IAudioRender> audio_render_{nullptr};
   std::shared_ptr<utils::ClockManager> clock_{nullptr};
   AudioSampleDispatcher dispatcher_;

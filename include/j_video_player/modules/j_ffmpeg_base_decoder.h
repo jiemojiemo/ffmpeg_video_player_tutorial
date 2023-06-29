@@ -154,7 +154,7 @@ private:
   }
 
   int initDemux(const std::string &url) {
-    demux_ = std::make_unique<ffmpeg_utils::FFMPEGDemuxer>();
+    demux_ = std::make_unique<ffmpeg_utils::FFmpegDmuxer>();
     int ret = demux_->openFile(url);
     RETURN_IF_ERROR_LOG(ret, "demux_->openFile failed\n");
     duration_ = demux_->getFormatContext()->duration / (float)AV_TIME_BASE;
@@ -162,7 +162,7 @@ private:
   }
 
   int initCodec(AVMediaType media_type) {
-    codec_ = std::make_unique<ffmpeg_utils::FFMPEGCodec>();
+    codec_ = std::make_unique<ffmpeg_utils::FFmpegCodec>();
     stream_index_ = (media_type == AVMEDIA_TYPE_VIDEO)
                         ? demux_->getVideoStreamIndex()
                         : demux_->getAudioStreamIndex();
@@ -274,8 +274,8 @@ private:
 
   std::string url_{};
   AVMediaType media_type_{AVMEDIA_TYPE_UNKNOWN};
-  std::unique_ptr<ffmpeg_utils::FFMPEGDemuxer> demux_;
-  std::unique_ptr<ffmpeg_utils::FFMPEGCodec> codec_;
+  std::unique_ptr<ffmpeg_utils::FFmpegDmuxer> demux_;
+  std::unique_ptr<ffmpeg_utils::FFmpegCodec> codec_;
   std::unique_ptr<std::thread> decode_thread_;
   std::atomic<DecoderState> state_{DecoderState::kStopped};
   std::atomic<int64_t> position_{0};

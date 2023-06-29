@@ -77,11 +77,11 @@ public:
   static const size_t VIDEO_PICTURE_QUEUE_SIZE = 2;
   static const size_t AUDIO_FRAME_QUEUE_SIZE = 10;
 
-  FFMPEGDemuxer demuxer;
-  FFMPEGCodec video_codec;
-  FFMPEGCodec audio_codec;
+  FFmpegDmuxer demuxer;
+  FFmpegCodec video_codec;
+  FFmpegCodec audio_codec;
   FFMPEGImageConverter img_conv;
-  FFMPEGAudioResampler audio_resampler;
+  FFmpegAudioResampler audio_resampler;
 
   int video_stream_index{-1};
   int audio_stream_index{-1};

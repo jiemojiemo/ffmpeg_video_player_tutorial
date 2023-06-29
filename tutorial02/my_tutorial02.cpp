@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
   sscanf(argv[2], "%d", &maxFramesToDecode);
   std::string infile = argv[1];
   // create ffmpeg demuxer
-  FFMPEGDemuxer demuxer;
+  FFmpegDmuxer demuxer;
   int ret = demuxer.openFile(infile);
   if (ret < 0) {
     printf("Could not open file %s\n", infile.c_str());
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
   }
 
   AVStream *video_stream = demuxer.getStream(video_stream_index);
-  FFMPEGCodec video_codec;
+  FFmpegCodec video_codec;
   auto codec_id = video_stream->codecpar->codec_id;
   auto par = video_stream->codecpar;
   video_codec.prepare(codec_id, par);

@@ -6,12 +6,12 @@
 
 using namespace testing;
 using namespace ffmpeg_utils;
-class AFFMEPGCodec : public Test {
+class AFFmpegCodec : public Test {
 public:
-  FFMPEGCodec d;
+  FFmpegCodec d;
 };
 
-TEST_F(AFFMEPGCodec, CanPrepareWithCodecId) {
+TEST_F(AFFmpegCodec, CanPrepareWithCodecId) {
   auto codec_id = AVCodecID::AV_CODEC_ID_H264;
 
   int ret = d.prepare(codec_id, nullptr);
@@ -19,7 +19,7 @@ TEST_F(AFFMEPGCodec, CanPrepareWithCodecId) {
   ASSERT_THAT(ret, Eq(0));
 }
 
-TEST_F(AFFMEPGCodec, GetCodecAfterPrepare) {
+TEST_F(AFFmpegCodec, GetCodecAfterPrepare) {
   auto codec_id = AVCodecID::AV_CODEC_ID_H264;
   d.prepare(codec_id, nullptr);
 
@@ -28,7 +28,7 @@ TEST_F(AFFMEPGCodec, GetCodecAfterPrepare) {
   ASSERT_THAT(c, NotNull());
 }
 
-TEST_F(AFFMEPGCodec, PrepareFailedIfIDInvalid) {
+TEST_F(AFFmpegCodec, PrepareFailedIfIDInvalid) {
   auto invalid_id = AVCodecID::AV_CODEC_ID_WRAPPED_AVFRAME + 1;
 
   int ret = d.prepare(AVCodecID(invalid_id), nullptr);
@@ -36,7 +36,7 @@ TEST_F(AFFMEPGCodec, PrepareFailedIfIDInvalid) {
   ASSERT_THAT(ret, Not(0));
 }
 
-TEST_F(AFFMEPGCodec, GetCodecContextAfterPrepare) {
+TEST_F(AFFmpegCodec, GetCodecContextAfterPrepare) {
   auto codec_id = AVCodecID::AV_CODEC_ID_H264;
   d.prepare(codec_id, nullptr);
 
@@ -45,7 +45,7 @@ TEST_F(AFFMEPGCodec, GetCodecContextAfterPrepare) {
   ASSERT_THAT(c, NotNull());
 }
 
-TEST_F(AFFMEPGCodec, PrepareWithParametersWillCopyParametersToCodecContext) {
+TEST_F(AFFmpegCodec, PrepareWithParametersWillCopyParametersToCodecContext) {
   auto codec_id = AVCodecID::AV_CODEC_ID_H264;
   AVCodecParameters parameters;
   parameters.width = 10;
