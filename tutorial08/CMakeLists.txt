@@ -1,2 +1,2 @@
-add_executable(my_tutorial08 my_tutorial08.cpp)
-target_link_libraries(my_tutorial08 PRIVATE j_video_player)
+add_executable(my_tutorial09 my_tutorial08.cpp)
+target_link_libraries(my_tutorial09 PRIVATE j_video_player)

@@ -34,6 +34,5 @@ add_subdirectory(tutorial04)
 add_subdirectory(tutorial05)
 add_subdirectory(tutorial07)
 add_subdirectory(tutorial08)
-add_subdirectory(tutorial09)
 
 add_subdirectory(tests)

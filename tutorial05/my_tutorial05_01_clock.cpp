@@ -3,6 +3,7 @@
 //
 #include "j_video_player/ffmpeg_utils/ffmpeg_decoder_context.h"
 #include "j_video_player/utils/clock.h"
+#include "j_video_player/utils/clock_manager.h"
 #include "j_video_player/utils/scope_guard.h"
 #include <SDL2/SDL.h>
 
