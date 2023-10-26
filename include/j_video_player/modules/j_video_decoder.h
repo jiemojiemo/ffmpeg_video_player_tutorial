@@ -50,14 +50,7 @@ public:
       auto result = converter_->convert(frame);
       if (result.second != nullptr) {
         if (video_render_) {
-          if (clock_) {
-            auto pts = frame->pts / (float)(AV_TIME_BASE);
-            clock_->setVideoClock(pts);
-            auto real_delay_ms =
-                (int)(av_sync_.computeTargetDelay(*clock_) * 1000);
-            std::this_thread::sleep_for(
-                std::chrono::milliseconds(real_delay_ms));
-          }
+          doAVSync(frame->pts);
           video_render_->renderVideoData(result.second);
         }
       }
@@ -67,6 +60,14 @@ public:
   void *getVideoConverter() { return converter_.get(); }
 
 private:
+  void doAVSync(int64_t frame_pts) {
+    if (clock_) {
+      auto pts = frame_pts / (float)(AV_TIME_BASE);
+      clock_->setVideoClock(pts);
+      auto real_delay_ms = (int)(av_sync_.computeTargetDelay(*clock_) * 1000);
+      std::this_thread::sleep_for(std::chrono::milliseconds(real_delay_ms));
+    }
+  }
   std::unique_ptr<ffmpeg_utils::FFMPEGImageConverter> converter_{nullptr};
   std::shared_ptr<IVideoRender> video_render_{nullptr};
   std::shared_ptr<utils::ClockManager> clock_{nullptr};

@@ -34,8 +34,6 @@ public:
   }
 
   void audioCallback(uint8_t *stream, int len) {
-    (void)(stream);
-    (void)(len);
     const int num_samples_of_stream = len / sizeof(int16_t);
     auto audio_pts_int64 = dispatcher_.pullAudioSamples((int16_t *)(stream),
                                                         num_samples_of_stream);
