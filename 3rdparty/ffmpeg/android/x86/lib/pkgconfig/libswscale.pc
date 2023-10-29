@@ -1,0 +1,14 @@
+prefix=/Users/user/Documents/develop/ffmpeg-android-maker/build/ffmpeg/x86
+exec_prefix=${prefix}
+libdir=/Users/user/Documents/develop/ffmpeg-android-maker/build/ffmpeg/x86/lib
+includedir=/Users/user/Documents/develop/ffmpeg-android-maker/build/ffmpeg/x86/include
+
+Name: libswscale
+Description: FFmpeg image rescaling library
+Version: 7.1.100
+Requires: 
+Requires.private: libavutil >= 58.2.100
+Conflicts:
+Libs: -L${libdir}  -lswscale 
+Libs.private: -lm -latomic
+Cflags: -I${includedir}
