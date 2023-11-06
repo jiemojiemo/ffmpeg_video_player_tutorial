@@ -8,13 +8,13 @@
 #include "j_video_player/ffmpeg_utils/ffmpeg_codec.h"
 #include "j_video_player/ffmpeg_utils/ffmpeg_demuxer.h"
 #include "j_video_player/ffmpeg_utils/ffmpeg_headers.h"
-#include "j_video_player/modules/j_i_decoder.h"
+#include "j_video_player/modules/j_i_source.h"
 #include "j_video_player/utils/scope_guard.h"
 #include <thread>
 namespace j_video_player {
 enum class DecoderState { kDecoding, kPaused, kStopped, kSeeking };
 
-class FFMPEGBaseDecoder : public IDecoder {
+class FFMPEGBaseDecoder : public ISource {
 public:
   ~FFMPEGBaseDecoder() override = default;
   void start() override {

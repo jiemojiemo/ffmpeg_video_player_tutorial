@@ -2,13 +2,13 @@
 // Created by user on 5/20/23.
 //
 
-#ifndef FFMPEG_VIDEO_PLAYER_J_I_DECODER_H
-#define FFMPEG_VIDEO_PLAYER_J_I_DECODER_H
+#ifndef FFMPEG_VIDEO_PLAYER_J_I_SOURCE_H
+#define FFMPEG_VIDEO_PLAYER_J_I_SOURCE_H
 
 namespace j_video_player {
-class IDecoder {
+class ISource {
 public:
-  virtual ~IDecoder() = default;
+  virtual ~ISource() = default;
   virtual void start() = 0;
   virtual void pause() = 0;
   virtual void stop() = 0;
@@ -19,4 +19,4 @@ public:
 };
 } // namespace j_video_player
 
-#endif // FFMPEG_VIDEO_PLAYER_J_I_DECODER_H
+#endif // FFMPEG_VIDEO_PLAYER_J_I_SOURCE_H
