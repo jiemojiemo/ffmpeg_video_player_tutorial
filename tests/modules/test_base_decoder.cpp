@@ -23,7 +23,8 @@ public:
     d = nullptr;
   }
   std::unique_ptr<MockFFBaseDecoder> d;
-  std::string url = "/Users/user/Downloads/video_1280x720_30fps_20sec.mp4";
+  std::string url =
+      "/Users/user/Documents/work/测试视频/video_1280x720_30fps_30sec.mp4";
   AVMediaType media_type = AVMEDIA_TYPE_VIDEO;
 };
 

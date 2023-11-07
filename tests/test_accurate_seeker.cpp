@@ -101,7 +101,7 @@ public:
   FFMPEGDecodeEngine e;
   std::unique_ptr<AccurateSeeker> s;
   const std::string file_path =
-      "/Users/user/Downloads/video_1280x720_30fps_20sec.mp4";
+      "/Users/user/Documents/work/测试视频/video_1280x720_30fps_30sec.mp4";
 };
 
 TEST_F(AAccurateSeeker, InitWithDecodeEngine) {

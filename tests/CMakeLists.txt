@@ -20,6 +20,7 @@ add_executable(unit_test
         modules/test_base_decoder.cpp
         modules/test_audio_decoder.cpp
         modules/test_audio_sample_dispatcher.cpp
+        modules/test_ffmpeg_decoder.cpp
         modules/test_sdl2_render.cpp
         modules/test_video_decoder.cpp
         )
