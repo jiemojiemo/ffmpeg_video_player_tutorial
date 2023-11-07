@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(ffmpeg CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 
 if (ENABLE_ASAN)
     message(STATUS "build with ASAN")

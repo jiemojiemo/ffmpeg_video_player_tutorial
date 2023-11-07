@@ -16,4 +16,13 @@
     return (ret);                                                              \
   }
 
+#if __ANDROID__
+
+#else
+#define LOGE(...) printf(__VA_ARGS__)
+#define LOGW(...) printf(__VA_ARGS__)
+#define LOGD(...) printf(__VA_ARGS__)
+
+#endif
+
 #endif // FFMPEG_VIDEO_PLAYER_FFMPEG_COMMON_UTILS_H

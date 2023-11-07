@@ -11,7 +11,7 @@ using namespace ffmpeg_utils;
 class AFFmpegDemuxer : public Test {
 public:
   const std::string file_path =
-      "/Users/user/Downloads/video_1280x720_30fps_20sec.mp4";
+      "/Users/user/Documents/work/测试视频/video_1280x720_30fps_30sec.mp4";
   FFmpegDmuxer d;
 };
 
