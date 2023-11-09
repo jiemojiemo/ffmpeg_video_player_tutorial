@@ -1,20 +1,19 @@
 //
-// Created by user on 11/7/23.
+// Created by user on 11/9/23.
 //
 
-#ifndef FFMPEG_VIDEO_PLAYER_J_I_DECODER_H
-#define FFMPEG_VIDEO_PLAYER_J_I_DECODER_H
+#ifndef FFMPEG_VIDEO_PLAYER_J_I_AUDIO_DECODER_H
+#define FFMPEG_VIDEO_PLAYER_J_I_AUDIO_DECODER_H
 #include "j_video_player/modules/j_frame.h"
 #include "j_video_player/modules/j_media_file_info.h"
-
 namespace j_video_player {
-class IVideoDecoder {
+class IAudioDecoder {
 public:
-  virtual ~IVideoDecoder() = default;
+  virtual ~IAudioDecoder() = default;
 
   /**
-   * open a video file
-   * @param file_path video file path
+   * open a audio file
+   * @param file_path audio file path
    * @return 0 if success, otherwise return error code
    */
   virtual int open(const std::string &file_path) = 0;
@@ -34,7 +33,7 @@ public:
    * decode next frame
    * @return a shared_ptr of VideoFrame if success, otherwise return nullptr
    */
-  virtual std::shared_ptr<Frame> decodeNextVideoFrame() = 0;
+  virtual std::shared_ptr<Frame> decodeNextAudioFrame() = 0;
 
   /**
    * seek to a timestamp quickly and get the video frame
@@ -42,14 +41,14 @@ public:
    * @param timestamp the timestamp(us) to seek
    * @return video frame if success, otherwise return nullptr
    */
-  virtual std::shared_ptr<Frame> seekVideoFrameQuick(int64_t timestamp) = 0;
+  virtual std::shared_ptr<Frame> seekAudioFrameQuick(int64_t timestamp) = 0;
 
   /**
    * seek to a timestamp precisely and get the video frame
    * @param timestamp the timestamp(us) to seek
    * @return video frame if success, otherwise return nullptr
    */
-  virtual std::shared_ptr<Frame> seekVideoFramePrecise(int64_t timestamp) = 0;
+  virtual std::shared_ptr<Frame> seekAudioFramePrecise(int64_t timestamp) = 0;
 
   /**
    * get the current position of the decoder
@@ -59,7 +58,6 @@ public:
 
   virtual MediaFileInfo getMediaFileInfo() = 0;
 };
-
 } // namespace j_video_player
 
-#endif // FFMPEG_VIDEO_PLAYER_J_I_DECODER_H
+#endif // FFMPEG_VIDEO_PLAYER_J_I_AUDIO_DECODER_H

@@ -2,17 +2,19 @@
 // Created by user on 11/7/23.
 //
 
-#ifndef FFMPEG_VIDEO_PLAYER_J_FFMPEG_VIDEO_DECODER_H
-#define FFMPEG_VIDEO_PLAYER_J_FFMPEG_VIDEO_DECODER_H
+#ifndef FFMPEG_VIDEO_PLAYER_J_FFMPEG_AV_DECODER_H
+#define FFMPEG_VIDEO_PLAYER_J_FFMPEG_AV_DECODER_H
 #include "j_video_player/ffmpeg_utils/ffmpeg_codec.h"
 #include "j_video_player/ffmpeg_utils/ffmpeg_demuxer.h"
 #include "j_video_player/ffmpeg_utils/ffmpeg_headers.h"
+#include "j_video_player/modules/j_i_audio_decoder.h"
 #include "j_video_player/modules/j_i_video_decoder.h"
 #include "j_video_player/utils/scope_guard.h"
 namespace j_video_player {
-class FFmpegVideoDecoder : public IVideoDecoder {
+template <int mediaType = AVMEDIA_TYPE_VIDEO>
+class FFmpegAVDecoder : public IVideoDecoder, public IAudioDecoder {
 public:
-  ~FFmpegVideoDecoder() override { cleanUp(); }
+  ~FFmpegAVDecoder() override { cleanUp(); }
   int open(const std::string &file_path) override {
     int ret = initDemuxer(file_path);
     RETURN_IF_ERROR(ret);
@@ -31,7 +33,66 @@ public:
     return demux_->isValid() && codec_->isValid();
   }
   void close() override { cleanUp(); }
-  std::shared_ptr<VideoFrame> decodeNextFrame() override {
+
+  std::shared_ptr<Frame> decodeNextVideoFrame() override {
+    return decodeNextFrame();
+  }
+
+  std::shared_ptr<Frame> decodeNextAudioFrame() override {
+    return decodeNextFrame();
+  }
+
+  std::shared_ptr<Frame> seekVideoFrameQuick(int64_t timestamp) override {
+    return seekFrameQuick(timestamp);
+  }
+
+  std::shared_ptr<Frame> seekVideoFramePrecise(int64_t timestamp) override {
+    return seekFramePrecise(timestamp);
+  }
+
+  std::shared_ptr<Frame> seekAudioFrameQuick(int64_t timestamp) override {
+    return seekFrameQuick(timestamp);
+  }
+  std::shared_ptr<Frame> seekAudioFramePrecise(int64_t timestamp) override {
+    return seekFramePrecise(timestamp);
+  }
+
+  int64_t getPosition() override { return position_; }
+
+  AVRational getVideoStreamTimeBase() {
+    return demux_->getStream(stream_index_)->time_base;
+  }
+
+  MediaFileInfo getMediaFileInfo() override {
+    MediaFileInfo info;
+    info.file_path = demux_->getFormatContext()->url;
+    info.width = codec_->getCodecContext()->width;
+    info.height = codec_->getCodecContext()->height;
+    info.duration = demux_->getFormatContext()->duration;
+    info.bit_rate = demux_->getFormatContext()->bit_rate;
+
+    auto video_index = demux_->getVideoStreamIndex();
+    auto *video_stream = demux_->getStream(video_index);
+    if (video_stream != nullptr) {
+      info.fps = av_q2d(video_stream->avg_frame_rate);
+      info.pixel_format = video_stream->codecpar->format;
+      info.video_stream_timebase = video_stream->time_base;
+    }
+
+    auto audio_index = demux_->getAudioStreamIndex();
+    auto *audio_stream = demux_->getStream(audio_index);
+    if (audio_stream != nullptr) {
+      info.sample_rate = audio_stream->codecpar->sample_rate;
+      info.channels = audio_stream->codecpar->channels;
+      info.sample_format = audio_stream->codecpar->format;
+      info.audio_stream_timebase = audio_stream->time_base;
+    }
+
+    return info;
+  }
+
+private:
+  std::shared_ptr<Frame> decodeNextFrame() {
     if (!isValid()) {
       LOGE("decoder is invalid");
       return nullptr;
@@ -42,7 +103,7 @@ public:
 
       // there may remains frames, let's try to get frame from codec first,
       {
-        auto video_frame = std::make_shared<VideoFrame>();
+        auto video_frame = std::make_shared<Frame>();
         ret = codec_->receiveFrame(video_frame->f);
         if (ret == 0) {
           updatePosition(video_frame);
@@ -73,7 +134,7 @@ public:
         return nullptr;
       }
 
-      auto video_frame = std::make_shared<VideoFrame>();
+      auto video_frame = std::make_shared<Frame>();
       ret = codec_->receiveFrame(video_frame->f);
       if (ret == 0) {
         updatePosition(video_frame);
@@ -87,7 +148,7 @@ public:
     }
   }
 
-  std::shared_ptr<VideoFrame> seekVideoFrameQuick(int64_t timestamp) override {
+  std::shared_ptr<Frame> seekFrameQuick(int64_t timestamp) {
     if (!isValid()) {
       LOGE("seek failed");
       return nullptr;
@@ -101,8 +162,7 @@ public:
     return decodeNextFrame();
   }
 
-  std::shared_ptr<VideoFrame>
-  seekVideoFramePrecise(int64_t timestamp) override {
+  std::shared_ptr<Frame> seekFramePrecise(int64_t timestamp) {
     if (!isValid()) {
       LOGE("seek failed");
       return nullptr;
@@ -114,7 +174,7 @@ public:
     }
 
     for (;;) {
-      auto frame = decodeNextFrame();
+      auto frame = decodeNextVideoFrame();
       if (frame == nullptr) {
         return nullptr;
       }
@@ -127,27 +187,6 @@ public:
     }
   }
 
-  int64_t getPosition() override { return position_; }
-
-  AVRational getVideoStreamTimeBase() {
-    return demux_->getStream(stream_index_)->time_base;
-  }
-
-  VideoFileInfo getVideoFileInfo() override {
-    VideoFileInfo info;
-    info.file_path = demux_->getFormatContext()->url;
-    info.width = codec_->getCodecContext()->width;
-    info.height = codec_->getCodecContext()->height;
-    info.duration = demux_->getFormatContext()->duration;
-    info.bit_rate = demux_->getFormatContext()->bit_rate;
-
-    auto *video_stream = demux_->getStream(stream_index_);
-    info.fps = av_q2d(video_stream->avg_frame_rate);
-    info.video_stream_timebase = video_stream->time_base;
-    return info;
-  }
-
-private:
   int initDemuxer(const std::string &file_path) {
     demux_ = std::make_unique<ffmpeg_utils::FFmpegDmuxer>();
     int ret = demux_->openFile(file_path);
@@ -157,7 +196,13 @@ private:
 
   int initCodec() {
     codec_ = std::make_unique<ffmpeg_utils::FFmpegCodec>();
-    stream_index_ = demux_->getVideoStreamIndex();
+    if (mediaType == AVMEDIA_TYPE_VIDEO) {
+      stream_index_ = demux_->getVideoStreamIndex();
+    } else if (mediaType == AVMEDIA_TYPE_AUDIO) {
+      stream_index_ = demux_->getAudioStreamIndex();
+    } else {
+      abort();
+    }
     auto *av_stream = demux_->getStream(stream_index_);
     if (av_stream == nullptr) {
       printf("av_stream is nullptr\n");
@@ -177,7 +222,7 @@ private:
     position_ = AV_NOPTS_VALUE;
   }
 
-  void updatePosition(const std::shared_ptr<VideoFrame> &frame) {
+  void updatePosition(const std::shared_ptr<Frame> &frame) {
     if (frame->f->pts != AV_NOPTS_VALUE) {
       position_ = av_rescale_q(frame->f->pts,
                                demux_->getStream(stream_index_)->time_base,
@@ -212,6 +257,9 @@ private:
   int64_t position_{AV_NOPTS_VALUE};
 };
 
+using FFmpegVideoDecoder = FFmpegAVDecoder<AVMEDIA_TYPE_VIDEO>;
+using FFmpegAudioDecoder = FFmpegAVDecoder<AVMEDIA_TYPE_AUDIO>;
+
 } // namespace j_video_player
 
-#endif // FFMPEG_VIDEO_PLAYER_J_FFMPEG_VIDEO_DECODER_H
+#endif // FFMPEG_VIDEO_PLAYER_J_FFMPEG_AV_DECODER_H
