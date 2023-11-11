@@ -24,5 +24,6 @@ add_executable(unit_test
         modules/test_ffmpeg_video_decoder.cpp
         modules/test_sdl2_render.cpp
         modules/test_video_decoder.cpp
+        modules/test_simple_video_source.cpp
         )
 target_link_libraries(unit_test PRIVATE gmock_main j_video_player)

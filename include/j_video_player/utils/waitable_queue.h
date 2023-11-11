@@ -10,7 +10,8 @@
 namespace utils {
 template <typename T> class WaitableQueue {
 public:
-  WaitableQueue(size_t queue_size = INT16_MAX) : queue_size_(queue_size) {}
+  explicit WaitableQueue(size_t queue_size = INT16_MAX)
+      : queue_size_(queue_size) {}
   bool empty() const {
     std::lock_guard lg(mut_);
     return q_.empty();
