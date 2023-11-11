@@ -59,10 +59,6 @@ public:
 
   int64_t getPosition() override { return position_; }
 
-  AVRational getVideoStreamTimeBase() {
-    return demux_->getStream(stream_index_)->time_base;
-  }
-
   MediaFileInfo getMediaFileInfo() override {
     MediaFileInfo info;
     info.file_path = demux_->getFormatContext()->url;
@@ -103,7 +99,7 @@ private:
 
       // there may remains frames, let's try to get frame from codec first,
       {
-        auto video_frame = std::make_shared<Frame>();
+        auto video_frame = std::make_shared<Frame>(time_base_);
         ret = codec_->receiveFrame(video_frame->f);
         if (ret == 0) {
           updatePosition(video_frame);
@@ -134,7 +130,7 @@ private:
         return nullptr;
       }
 
-      auto video_frame = std::make_shared<Frame>();
+      auto video_frame = std::make_shared<Frame>(time_base_);
       ret = codec_->receiveFrame(video_frame->f);
       if (ret == 0) {
         updatePosition(video_frame);
@@ -179,8 +175,7 @@ private:
         return nullptr;
       }
 
-      auto frame_pts =
-          av_rescale_q(frame->f->pts, getVideoStreamTimeBase(), AV_TIME_BASE_Q);
+      auto frame_pts = av_rescale_q(frame->f->pts, time_base_, AV_TIME_BASE_Q);
       if (frame_pts >= timestamp) {
         return frame;
       }
@@ -203,6 +198,7 @@ private:
     } else {
       abort();
     }
+    time_base_ = demux_->getStream(stream_index_)->time_base;
     auto *av_stream = demux_->getStream(stream_index_);
     if (av_stream == nullptr) {
       printf("av_stream is nullptr\n");
@@ -254,6 +250,7 @@ private:
   std::unique_ptr<ffmpeg_utils::FFmpegDmuxer> demux_{nullptr};
   std::unique_ptr<ffmpeg_utils::FFmpegCodec> codec_{nullptr};
   int stream_index_{-1};
+  AVRational time_base_;
   int64_t position_{AV_NOPTS_VALUE};
 };
 
