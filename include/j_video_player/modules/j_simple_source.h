@@ -2,10 +2,10 @@
 // Created by user on 11/11/23.
 //
 
-#ifndef FFMPEG_VIDEO_PLAYER_J_SIMPLE_VIDEO_SOURCE_H
-#define FFMPEG_VIDEO_PLAYER_J_SIMPLE_VIDEO_SOURCE_H
+#ifndef FFMPEG_VIDEO_PLAYER_J_SIMPLE_SOURCE_H
+#define FFMPEG_VIDEO_PLAYER_J_SIMPLE_SOURCE_H
 #include "j_video_player/modules/j_ffmpeg_av_decoder.h"
-#include "j_video_player/modules/j_i_video_source.h"
+#include "j_video_player/modules/j_i_source.h"
 #include "j_video_player/utils/waitable_event.h"
 #include "j_video_player/utils/waitable_queue.h"
 #include <thread>
@@ -15,12 +15,12 @@ namespace j_video_player {
 /**
  * BaseVideoSource is a base class for video source
  */
-class SimpleVideoSource : public IVideoSource {
+template <typename DecoderType> class SimpleSource : public ISource {
 public:
-  explicit SimpleVideoSource(std::shared_ptr<IVideoDecoder> decoder)
+  explicit SimpleSource(std::shared_ptr<DecoderType> decoder)
       : decoder_(std::move(decoder)),
         frame_queue_(std::make_unique<QueueType>(kQueueSize)) {}
-  ~SimpleVideoSource() override { cleanup(); };
+  ~SimpleSource() override { cleanup(); };
   int open(const std::string &file_path) override {
     if (decoder_) {
       return decoder_->open(file_path);
@@ -36,7 +36,7 @@ public:
   }
 
   int play() override {
-    state_ = VideoSourceState::kPlaying;
+    state_ = SourceState::kPlaying;
     if (!isThreadRunning()) {
       startDecodeThread();
     }
@@ -44,23 +44,23 @@ public:
     return 0;
   }
   int pause() override {
-    state_ = VideoSourceState::kPaused;
+    state_ = SourceState::kPaused;
     return 0;
   }
   int stop() override {
-    state_ = VideoSourceState::kStopped;
+    state_ = SourceState::kStopped;
     return 0;
   }
   int seek(int64_t timestamp) override {
     seek_timestamp_ = timestamp;
-    state_ = VideoSourceState::kSeeking;
+    state_ = SourceState::kSeeking;
     if (!isThreadRunning()) {
       startDecodeThread();
     }
     wait_event_.signal();
     return 0;
   }
-  VideoSourceState getState() override { return state_; }
+  SourceState getState() override { return state_; }
   int64_t getDuration() override { return 0; }
   int64_t getCurrentPosition() override { return 0; }
   std::shared_ptr<Frame> dequeueFrame() override {
@@ -74,7 +74,7 @@ public:
 private:
   void startDecodeThread() {
     decode_thread_ =
-        std::make_unique<std::thread>(&SimpleVideoSource::decodingThread, this);
+        std::make_unique<std::thread>(&SimpleSource::decodingThread, this);
   }
 
   void decodingThread() {
@@ -83,22 +83,22 @@ private:
       return;
     }
     for (;;) {
-      if (state_ == VideoSourceState::kPlaying) {
+      if (state_ == SourceState::kPlaying) {
         auto frame = decoder_->decodeNextVideoFrame();
         if (frame) {
           frame_queue_->push(std::move(frame));
         }
-      } else if (state_ == VideoSourceState::kSeeking) {
+      } else if (state_ == SourceState::kSeeking) {
         auto frame = decoder_->seekVideoFramePrecise(seek_timestamp_);
         if (frame) {
           frame_queue_->push(std::move(frame));
         }
-        state_ = VideoSourceState::kPlaying;
-      } else if (state_ == VideoSourceState::kPaused) {
+        state_ = SourceState::kPlaying;
+      } else if (state_ == SourceState::kPaused) {
         wait_event_.wait(-1);
-      } else if (state_ == VideoSourceState::kStopped) {
+      } else if (state_ == SourceState::kStopped) {
         break;
-      } else if (state_ == VideoSourceState::kIdle) {
+      } else if (state_ == SourceState::kIdle) {
         wait_event_.wait(-1);
       }
     }
@@ -123,8 +123,8 @@ private:
   }
 
   bool isValid() { return decoder_ && decoder_->isValid(); }
-  std::shared_ptr<IVideoDecoder> decoder_;
-  std::atomic<VideoSourceState> state_{VideoSourceState::kIdle};
+  std::shared_ptr<DecoderType> decoder_;
+  std::atomic<SourceState> state_{SourceState::kIdle};
   std::unique_ptr<std::thread> decode_thread_;
   WaitableEvent wait_event_;
   std::atomic<int64_t> seek_timestamp_{0};
@@ -133,6 +133,8 @@ private:
   constexpr static int kQueueSize = 10;
 };
 
+using SimpleVideoSource = SimpleSource<IVideoDecoder>;
+
 } // namespace j_video_player
 
-#endif // FFMPEG_VIDEO_PLAYER_J_SIMPLE_VIDEO_SOURCE_H
+#endif // FFMPEG_VIDEO_PLAYER_J_SIMPLE_SOURCE_H

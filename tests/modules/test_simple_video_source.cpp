@@ -2,7 +2,7 @@
 // Created by user on 11/11/23.
 //
 
-#include "j_video_player/modules/j_simple_video_source.h"
+#include "j_video_player/modules/j_simple_source.h"
 #include <gmock/gmock.h>
 using namespace testing;
 using namespace j_video_player;
@@ -53,7 +53,7 @@ TEST_F(ASimpleVideoSource, CanGetMediaFileInfoAfterOpen) {
 }
 
 TEST_F(ASimpleVideoSource, InitStateIsIdle) {
-  ASSERT_THAT(source->getState(), Eq(VideoSourceState::kIdle));
+  ASSERT_THAT(source->getState(), Eq(SourceState::kIdle));
 }
 
 TEST_F(ASimpleVideoSource, CanPlayIfOpenSuccess) {
@@ -67,7 +67,7 @@ TEST_F(ASimpleVideoSource, PlayChangeStateToPlaying) {
   source->open(url);
   source->play();
 
-  ASSERT_THAT(source->getState(), Eq(VideoSourceState::kPlaying));
+  ASSERT_THAT(source->getState(), Eq(SourceState::kPlaying));
 }
 
 TEST_F(ASimpleVideoSource, StopChangeStateToStopped) {
@@ -75,7 +75,7 @@ TEST_F(ASimpleVideoSource, StopChangeStateToStopped) {
   source->play();
   source->stop();
 
-  ASSERT_THAT(source->getState(), Eq(VideoSourceState::kStopped));
+  ASSERT_THAT(source->getState(), Eq(SourceState::kStopped));
 }
 
 TEST_F(ASimpleVideoSource, PauseChangeStateToPaused) {
@@ -83,7 +83,7 @@ TEST_F(ASimpleVideoSource, PauseChangeStateToPaused) {
   source->play();
   source->pause();
 
-  ASSERT_THAT(source->getState(), Eq(VideoSourceState::kPaused));
+  ASSERT_THAT(source->getState(), Eq(SourceState::kPaused));
 }
 
 TEST_F(ASimpleVideoSource, QueueSizeIsZeroIfNeverPlay) {
