@@ -134,6 +134,7 @@ private:
 };
 
 using SimpleVideoSource = SimpleSource<IVideoDecoder>;
+using SimpleAudioSource = SimpleSource<IAudioDecoder>;
 
 } // namespace j_video_player
 

@@ -6,9 +6,9 @@
 #define FFMPEG_VIDEO_PLAYER_J_AUDIO_RENDER_H
 #include <cstdint>
 namespace j_video_player {
-class IAudioRender {
+class IAudioRenderDeprecated {
 public:
-  virtual ~IAudioRender() = default;
+  virtual ~IAudioRenderDeprecated() = default;
   virtual void initAudioRender() = 0;
   virtual void uninit() = 0;
   virtual void clearAudioCache() = 0;

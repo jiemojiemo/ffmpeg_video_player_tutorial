@@ -6,9 +6,9 @@
 #define FFMPEG_VIDEO_PLAYER_J_VIDEO_RENDER_H
 #include <libavutil/frame.h>
 namespace j_video_player {
-class IVideoRender {
+class IVideoRenderDeprecated {
 public:
-  virtual ~IVideoRender() = default;
+  virtual ~IVideoRenderDeprecated() = default;
   virtual void initVideoRender(int video_width, int video_height) = 0;
   virtual void uninit() = 0;
   virtual void renderVideoData(AVFrame *frame) = 0;

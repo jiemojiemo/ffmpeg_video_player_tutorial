@@ -14,7 +14,8 @@
 #include <vector>
 
 namespace j_video_player {
-class SDL2Render : public IAudioRender, public IVideoRender {
+class SDL2Render : public IAudioRenderDeprecated,
+                   public IVideoRenderDeprecated {
 public:
   ~SDL2Render() override { cleanup(); }
   void initAudioRender() override {

@@ -14,7 +14,7 @@
 #include "j_video_player/utils/simple_fifo.h"
 
 namespace j_video_player {
-class IAudioRender;
+class IAudioRenderDeprecated;
 class AudioDecoder : public FFMPEGBaseDecoder {
 public:
   AudioDecoder(const std::string &file_path) {
@@ -23,7 +23,7 @@ public:
 
   ~AudioDecoder() override { uninit(); }
 
-  void setRender(std::shared_ptr<IAudioRender> render) {
+  void setRender(std::shared_ptr<IAudioRenderDeprecated> render) {
     audio_render_ = std::move(render);
     audio_render_->setAudioCallback(
         [this](uint8_t *stream, int len) { audioCallback(stream, len); });
@@ -88,7 +88,7 @@ public:
 
 private:
   std::unique_ptr<ffmpeg_utils::FFmpegAudioResampler> audio_resampler_{nullptr};
-  std::shared_ptr<IAudioRender> audio_render_{nullptr};
+  std::shared_ptr<IAudioRenderDeprecated> audio_render_{nullptr};
   std::shared_ptr<utils::ClockManager> clock_{nullptr};
   AudioSampleDispatcher dispatcher_;
 

@@ -17,7 +17,7 @@ public:
     init(file_path, AVMEDIA_TYPE_VIDEO);
   }
 
-  void setRender(std::shared_ptr<IVideoRender> render) {
+  void setRender(std::shared_ptr<IVideoRenderDeprecated> render) {
     video_render_ = std::move(render);
   }
 
@@ -69,7 +69,7 @@ private:
     }
   }
   std::unique_ptr<ffmpeg_utils::FFMPEGImageConverter> converter_{nullptr};
-  std::shared_ptr<IVideoRender> video_render_{nullptr};
+  std::shared_ptr<IVideoRenderDeprecated> video_render_{nullptr};
   std::shared_ptr<utils::ClockManager> clock_{nullptr};
   utils::AVSynchronizer av_sync_;
 };

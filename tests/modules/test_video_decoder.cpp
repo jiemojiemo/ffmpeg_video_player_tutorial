@@ -7,7 +7,7 @@
 using namespace testing;
 using namespace j_video_player;
 
-class MockVideoRender : public IVideoRender {
+class MockVideoRender : public IVideoRenderDeprecated {
 public:
   MOCK_METHOD(void, initVideoRender, (int, int), (override));
   void uninit() override {}
