@@ -8,7 +8,7 @@
 using namespace testing;
 using namespace j_video_player;
 
-class MockAudioRender : public IAudioRender {
+class MockAudioRender : public IAudioRenderDeprecated {
 public:
   MOCK_METHOD(void, initAudioRender, (), (override));
   void uninit() override {}
