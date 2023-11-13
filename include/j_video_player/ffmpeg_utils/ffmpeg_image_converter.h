@@ -7,6 +7,8 @@
 #pragma once
 #include "ffmpeg_common_utils.h"
 #include "ffmpeg_headers.h"
+#include "j_video_player/modules/j_frame.h"
+#include <memory>
 #include <utility>
 
 namespace ffmpeg_utils {
@@ -57,6 +59,28 @@ public:
         in_frame->height, frame->data, frame->linesize);
 
     return {output_height, frame};
+  }
+
+  std::shared_ptr<j_video_player::Frame>
+  convert2(const std::shared_ptr<j_video_player::Frame> &input_frame) {
+    if (sws_ctx == nullptr || frame == nullptr) {
+      return nullptr;
+    }
+
+    auto *in_frame = input_frame->f;
+    frame->pict_type = in_frame->pict_type;
+    frame->pts = in_frame->pts;
+    frame->pkt_dts = in_frame->pkt_dts;
+    frame->key_frame = in_frame->key_frame;
+    frame->coded_picture_number = in_frame->coded_picture_number;
+    frame->display_picture_number = in_frame->display_picture_number;
+
+    sws_scale(sws_ctx, (uint8_t const *const *)in_frame->data,
+              in_frame->linesize, 0, in_frame->height, frame->data,
+              frame->linesize);
+
+    return std::make_shared<j_video_player::Frame>(frame,
+                                                   input_frame->time_base);
   }
 
   void clear() {

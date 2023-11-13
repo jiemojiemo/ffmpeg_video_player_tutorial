@@ -25,6 +25,9 @@ public:
 
     in_frame_buffer = (uint8_t *)av_malloc(num_bytes * sizeof(uint8_t));
     in_frame = av_frame_alloc();
+    in_frame->format = src_format;
+    in_frame->width = src_w;
+    in_frame->height = src_h;
     av_image_fill_arrays(in_frame->data, in_frame->linesize, in_frame_buffer,
                          src_format, src_w, src_h,
                          FFMPEGImageConverter::kAlign);
@@ -61,13 +64,25 @@ TEST_F(AFFMPEGImageConverter, CanClearInterStates) {
   ASSERT_THAT(c.frame, IsNull());
 }
 
-TEST_F(AFFMPEGImageConverter, CanConvertFrame) {
+TEST_F(AFFMPEGImageConverter, CanConvertAVFrame) {
 
   allocateInFrame();
   c.prepare(src_w, src_h, src_format, dst_w, dst_h, dst_format, flags, nullptr,
             nullptr, nullptr);
 
   auto [out_h, out] = c.convert(in_frame);
+
+  ASSERT_THAT(out, NotNull());
+}
+
+TEST_F(AFFMPEGImageConverter, CanConvertFrame) {
+  allocateInFrame();
+  c.prepare(src_w, src_h, src_format, dst_w, dst_h, dst_format, flags, nullptr,
+            nullptr, nullptr);
+
+  auto frame =
+      std::make_shared<j_video_player::Frame>(in_frame, AVRational{1, 30});
+  auto out = c.convert2(frame);
 
   ASSERT_THAT(out, NotNull());
 }

@@ -10,6 +10,8 @@ namespace j_video_player {
 class Frame {
 public:
   explicit Frame(AVRational tb) : f(av_frame_alloc()), time_base(tb) {}
+  explicit Frame(AVFrame *frame, AVRational tb)
+      : f(av_frame_clone(frame)), time_base(tb) {}
 
   ~Frame() {
     if (f) {
@@ -24,6 +26,13 @@ public:
    */
   int64_t pts() const {
     return av_rescale_q(f->pts, time_base, AV_TIME_BASE_Q);
+  }
+
+  /**
+   * get the pts(seconds) of the frame
+   */
+  double pts_d() const {
+    return pts() / (double)AV_TIME_BASE;
   }
 
   AVFrame *f{nullptr};
