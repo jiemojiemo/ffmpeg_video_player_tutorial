@@ -53,14 +53,13 @@ protected:
           break;
         } else if (state_ == OutputState::kPaused) {
           continue;
-        } else if (state_ != OutputState::kPlaying) {
+        } else if (state_ == OutputState::kPlaying) {
           if (source_ == nullptr) {
             LOGW("source is null, can't play. Please attach source first");
             break;
           }
           auto frame = source_->dequeueFrame();
           if (frame == nullptr) {
-            LOGW("frame is null, skit this frame");
             continue;
           }
 
@@ -91,9 +90,20 @@ protected:
       clock_->setVideoClock(pts_d);
       auto real_delay_ms = (int)(av_sync_.computeTargetDelay(*clock_) * 1000);
       std::this_thread::sleep_for(std::chrono::milliseconds(real_delay_ms));
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(30));
     }
   }
 
+  void cleanup() {
+    state_ = OutputState::kIdle;
+
+    if (output_thread_ != nullptr && output_thread_->joinable()) {
+      output_thread_->join();
+      output_thread_ = nullptr;
+      LOGD("video output thread stopped\n");
+    }
+  }
 
   std::shared_ptr<ISource> source_;
   std::shared_ptr<ffmpeg_utils::FFMPEGImageConverter> converter_;
@@ -101,16 +111,6 @@ protected:
   std::unique_ptr<std::thread> output_thread_;
   std::atomic<OutputState> state_{OutputState::kIdle};
   utils::AVSynchronizer av_sync_;
-
-private:
-  void cleanup() {
-    state_ = OutputState::kIdle;
-
-    if (output_thread_ != nullptr && output_thread_->joinable()) {
-      output_thread_->join();
-      output_thread_ = nullptr;
-    }
-  }
 };
 
 } // namespace j_video_player

@@ -10,7 +10,10 @@
 namespace j_video_player {
 class SDL2VideoOutput : public BaseVideoOutput {
 public:
-  ~SDL2VideoOutput() override { cleanup(); }
+  ~SDL2VideoOutput() override {
+    BaseVideoOutput::cleanup();
+    cleanSDL2();
+  }
   int prepare(const VideoOutputParameters &parameters) override {
     if (parameters.width <= 0 || parameters.height <= 0) {
       LOGE("invalid width or height");
@@ -91,7 +94,7 @@ private:
     return 0;
   }
 
-  void cleanup() {
+  void cleanSDL2() {
     if (is_sdl2_system_init) {
       if (texture_) {
         SDL_DestroyTexture(texture_);
