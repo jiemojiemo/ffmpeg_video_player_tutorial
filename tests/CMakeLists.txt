@@ -23,6 +23,7 @@ add_executable(unit_test
         modules/test_ffmpeg_audio_decoder.cpp
         modules/test_ffmpeg_video_decoder.cpp
         modules/test_sdl2_render.cpp
+        modules/test_base_video_output.cpp
         modules/test_video_decoder.cpp
         modules/test_simple_video_source.cpp
         )
