@@ -75,14 +75,6 @@ protected:
     });
   }
 
-  void cleanup() {
-    state_ = OutputState::kIdle;
-
-    if (output_thread_ != nullptr && output_thread_->joinable()) {
-      output_thread_->join();
-      output_thread_ = nullptr;
-    }
-  }
   bool isThreadRunning() const {
     return output_thread_ != nullptr && output_thread_->joinable();
   }
@@ -102,12 +94,23 @@ protected:
     }
   }
 
+
   std::shared_ptr<ISource> source_;
   std::shared_ptr<ffmpeg_utils::FFMPEGImageConverter> converter_;
   std::shared_ptr<utils::ClockManager> clock_;
   std::unique_ptr<std::thread> output_thread_;
   std::atomic<OutputState> state_{OutputState::kIdle};
   utils::AVSynchronizer av_sync_;
+
+private:
+  void cleanup() {
+    state_ = OutputState::kIdle;
+
+    if (output_thread_ != nullptr && output_thread_->joinable()) {
+      output_thread_->join();
+      output_thread_ = nullptr;
+    }
+  }
 };
 
 } // namespace j_video_player
