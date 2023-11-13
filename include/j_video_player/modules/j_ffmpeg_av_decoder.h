@@ -120,7 +120,7 @@ private:
       }
 
       if (ret != 0) {
-        LOGE("readPacket failed");
+        LOGE("readPacket failed: %s\n", av_err2str(ret));
         return nullptr;
       }
 

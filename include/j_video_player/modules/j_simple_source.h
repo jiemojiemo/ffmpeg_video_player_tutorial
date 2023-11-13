@@ -86,12 +86,16 @@ private:
       if (state_ == SourceState::kPlaying) {
         auto frame = decoder_->decodeNextVideoFrame();
         if (frame) {
-          frame_queue_->push(std::move(frame));
+          frame_queue_->wait_and_push(std::move(frame));
+        } else {
+          stop();
         }
       } else if (state_ == SourceState::kSeeking) {
         auto frame = decoder_->seekVideoFramePrecise(seek_timestamp_);
         if (frame) {
-          frame_queue_->push(std::move(frame));
+          frame_queue_->wait_and_push(std::move(frame));
+        } else {
+          stop();
         }
         state_ = SourceState::kPlaying;
       } else if (state_ == SourceState::kPaused) {
