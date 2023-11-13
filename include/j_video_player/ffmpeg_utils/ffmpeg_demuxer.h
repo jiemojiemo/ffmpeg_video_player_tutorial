@@ -13,6 +13,8 @@ class FFmpegDmuxer {
 public:
   ~FFmpegDmuxer() { close(); }
   int openFile(const std::string &file_path) {
+    close();
+    
     int ret =
         avformat_open_input(&format_ctx_, file_path.c_str(), NULL, NULL); // [2]
     RETURN_IF_ERROR(ret);
