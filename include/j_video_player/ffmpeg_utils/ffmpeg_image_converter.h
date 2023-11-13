@@ -26,6 +26,7 @@ public:
     sws_ctx = sws_getContext(srcW, srcH, srcFormat, dstW, dstH, dstFormat,
                              flags, srcFilter, dstFilter, param);
     if (sws_ctx == nullptr) {
+      LOGE("Cannot initialize the conversion context\n");
       return -1;
     }
 

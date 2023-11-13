@@ -81,7 +81,11 @@ public:
     }
 
     if (video_config != nullptr) {
-      prepareImageConverter(video_config);
+      auto ret = prepareImageConverter(video_config);
+      if (ret != 0) {
+        LOGE("prepare image converter failed\n");
+        return ret;
+      }
     }
 
     if (audio_config != nullptr) {
