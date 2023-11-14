@@ -117,7 +117,8 @@ private:
       auto *f = frame->f;
       auto num_samples_out_per_channel =
           resampler_->convert((const uint8_t **)f->data, f->nb_samples);
-      auto num_total_samples = num_samples_out_per_channel * f->channels;
+      auto num_total_samples =
+          num_samples_out_per_channel * resampler_->out_num_channels();
       auto *int16_resample_data =
           reinterpret_cast<int16_t *>(resampler_->resample_data[0]);
       for (auto i = 0; i < num_total_samples; ++i) {

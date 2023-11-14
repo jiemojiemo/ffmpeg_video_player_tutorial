@@ -21,6 +21,7 @@ public:
   int sample_rate{0};
   int channels{0};
   int sample_format{0};
+  int channel_layout{0};
   AVRational audio_stream_timebase{AVRational{0, 0}};
 };
 

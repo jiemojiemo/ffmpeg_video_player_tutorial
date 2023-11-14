@@ -60,15 +60,17 @@ public:
         return nullptr;
       }
 
+      if (ret != 0) {
+        LOGE("readPacket failed: %s\n", av_err2str(ret));
+        return nullptr;
+      }
+
       // skip this packet if is not target stream
       if (stream_index_ != pkt->stream_index) {
         continue;
       }
 
-      if (ret != 0) {
-        LOGE("readPacket failed: %s\n", av_err2str(ret));
-        return nullptr;
-      }
+
 
       ret = codec_->sendPacketToCodec(pkt);
       if (ret == AVERROR_EOF) {
@@ -152,6 +154,7 @@ public:
       info.sample_rate = audio_stream->codecpar->sample_rate;
       info.channels = audio_stream->codecpar->channels;
       info.sample_format = audio_stream->codecpar->format;
+      info.channel_layout = audio_stream->codecpar->channel_layout;
       info.audio_stream_timebase = audio_stream->time_base;
     }
 
