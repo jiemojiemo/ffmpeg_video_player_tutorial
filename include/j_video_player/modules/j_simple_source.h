@@ -84,14 +84,14 @@ private:
     }
     for (;;) {
       if (state_ == SourceState::kPlaying) {
-        auto frame = decoder_->decodeNextVideoFrame();
+        auto frame = decoder_->decodeNextFrame();
         if (frame) {
           frame_queue_->wait_and_push(std::move(frame));
         } else {
           stop();
         }
       } else if (state_ == SourceState::kSeeking) {
-        auto frame = decoder_->seekVideoFramePrecise(seek_timestamp_);
+        auto frame = decoder_->seekFramePrecise(seek_timestamp_);
         if (frame) {
           frame_queue_->wait_and_push(std::move(frame));
         } else {

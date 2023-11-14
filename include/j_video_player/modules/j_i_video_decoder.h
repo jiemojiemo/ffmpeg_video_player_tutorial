@@ -34,7 +34,7 @@ public:
    * decode next frame
    * @return a shared_ptr of VideoFrame if success, otherwise return nullptr
    */
-  virtual std::shared_ptr<Frame> decodeNextVideoFrame() = 0;
+  virtual std::shared_ptr<Frame> decodeNextFrame() = 0;
 
   /**
    * seek to a timestamp quickly and get the video frame
@@ -42,14 +42,14 @@ public:
    * @param timestamp the timestamp(us) to seek
    * @return video frame if success, otherwise return nullptr
    */
-  virtual std::shared_ptr<Frame> seekVideoFrameQuick(int64_t timestamp) = 0;
+  virtual std::shared_ptr<Frame> seekFrameQuick(int64_t timestamp) = 0;
 
   /**
    * seek to a timestamp precisely and get the video frame
    * @param timestamp the timestamp(us) to seek
    * @return video frame if success, otherwise return nullptr
    */
-  virtual std::shared_ptr<Frame> seekVideoFramePrecise(int64_t timestamp) = 0;
+  virtual std::shared_ptr<Frame> seekFramePrecise(int64_t timestamp) = 0;
 
   /**
    * get the current position of the decoder
