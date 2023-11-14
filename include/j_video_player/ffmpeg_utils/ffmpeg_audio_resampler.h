@@ -48,6 +48,12 @@ public:
     return ret;
   }
 
+  int out_num_channels() const{
+    int64_t out = 0;
+    av_opt_get_int(swr, "out_channel_count", 0, &out);
+    return out;
+  }
+
   int convert(const uint8_t **in, int in_num_samples_per_channel) {
     return swr_convert(swr, resample_data.data(), in_num_samples_per_channel,
                        in, in_num_samples_per_channel);
