@@ -54,15 +54,15 @@ TEST_F(AFFmpegAudioDecoder, IsInvalidAfterClose) {
 TEST_F(AFFmpegAudioDecoder, DecodeReturnsNullIfInvalid) {
   ASSERT_THAT(decoder->isValid(), Eq(false));
 
-  auto frame = decoder->decodeNextAudioFrame();
+  auto frame = decoder->decodeNextFrame();
   ASSERT_THAT(frame, IsNull());
 }
 
-TEST_F(AFFmpegAudioDecoder, CanDecodeNextAudioFrame) {
+TEST_F(AFFmpegAudioDecoder, CandecodeNextFrame) {
   auto ret = decoder->open(file_path);
   ASSERT_THAT(ret, Eq(0));
 
-  auto frame = decoder->decodeNextAudioFrame();
+  auto frame = decoder->decodeNextFrame();
   ASSERT_THAT(frame, NotNull());
 }
 
@@ -77,25 +77,25 @@ TEST_F(AFFmpegAudioDecoder, PositionSameWithFramePTS) {
   decoder->open(file_path);
 
   for (int i = 0; i < 3; i++) {
-    auto frame = decoder->decodeNextAudioFrame();
+    auto frame = decoder->decodeNextFrame();
     auto time_base = decoder->getMediaFileInfo().audio_stream_timebase;
     auto expected_pts = av_rescale_q(frame->f->pts, time_base, AV_TIME_BASE_Q);
     EXPECT_THAT(decoder->getPosition(), Eq(expected_pts));
   }
 }
 
-TEST_F(AFFmpegAudioDecoder, SeekAudioFrameQuickCanGetAudioFrame) {
+TEST_F(AFFmpegAudioDecoder, seekFrameQuickCanGetAudioFrame) {
   auto ret = decoder->open(file_path);
   ASSERT_THAT(ret, Eq(0));
 
   auto target_pts = 1 * 1000 * 1000; // 1s
-  auto frame = decoder->seekAudioFrameQuick(target_pts);
+  auto frame = decoder->seekFrameQuick(target_pts);
   ASSERT_THAT(frame, NotNull());
 }
 
 TEST_F(AFFmpegAudioDecoder, SeeAudioFrameQuickFailedIfInvalid) {
   ASSERT_THAT(decoder->isValid(), Eq(false));
-  ASSERT_THAT(decoder->seekAudioFrameQuick(0), IsNull());
+  ASSERT_THAT(decoder->seekFrameQuick(0), IsNull());
 }
 
 TEST_F(AFFmpegAudioDecoder, SeekFramePreciseCanGetAudioFrame) {
@@ -103,7 +103,7 @@ TEST_F(AFFmpegAudioDecoder, SeekFramePreciseCanGetAudioFrame) {
   ASSERT_THAT(ret, Eq(0));
 
   auto target_pts = 1 * 1000 * 1000; // 1s
-  auto frame = decoder->seekAudioFramePrecise(target_pts);
+  auto frame = decoder->seekFramePrecise(target_pts);
   ASSERT_THAT(frame, NotNull());
   ASSERT_THAT(frame->f->pts, Not(0));
 }
@@ -120,7 +120,7 @@ TEST_F(AFFmpegAudioDecoder, PositionResetToNOPTSAfterClose) {
   auto ret = decoder->open(file_path);
   ASSERT_THAT(ret, Eq(0));
 
-  decoder->decodeNextAudioFrame();
+  decoder->decodeNextFrame();
   ASSERT_THAT(decoder->getPosition(), Ne(AV_NOPTS_VALUE));
 
   decoder->close();

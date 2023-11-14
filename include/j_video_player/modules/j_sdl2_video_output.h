@@ -57,7 +57,7 @@ protected:
 private:
   int initSDL2System() {
     if (!is_sdl2_system_init) {
-      if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
+      if (SDL_InitSubSystem(SDL_INIT_VIDEO)) {
         printf("Could not initialize SDL - %s\n", SDL_GetError());
         return -1;
       }
@@ -111,7 +111,7 @@ private:
         window_ = nullptr;
       }
 
-      SDL_Quit();
+      SDL_QuitSubSystem(SDL_INIT_VIDEO);
       is_sdl2_system_init = false;
     }
   }
