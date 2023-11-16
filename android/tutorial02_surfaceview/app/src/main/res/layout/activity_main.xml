@@ -6,13 +6,20 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+
+        <Button
+            android:id="@+id/go_display_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="显示图片示例" />
+
+        <Button
+            android:id="@+id/go_play_video"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="播放视频示例" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

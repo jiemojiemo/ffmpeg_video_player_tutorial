@@ -12,6 +12,9 @@
         android:theme="@style/Theme.UseSurfaceView"
         tools:targetApi="31">
         <activity
+            android:name=".DisplayImageActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
