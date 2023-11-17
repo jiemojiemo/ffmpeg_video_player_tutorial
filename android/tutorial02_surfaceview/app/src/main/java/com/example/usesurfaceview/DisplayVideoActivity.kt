@@ -57,6 +57,11 @@ class DisplayVideoActivity : AppCompatActivity() {
             mPlayer.stop()
         }
 
+        val pauseButton = findViewById<Button>(R.id.btn_pause)
+        pauseButton.setOnClickListener {
+            mPlayer.pause()
+        }
+
         val seekBar = findViewById<SeekBar>(R.id.seek_bar)
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener{
             override fun onProgressChanged(p0: SeekBar?, progress: Int, fromUser: Boolean) {
