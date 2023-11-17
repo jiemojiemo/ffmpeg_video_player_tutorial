@@ -24,12 +24,12 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, DisplayImageActivity::class.java)
             startActivity(intent)
         }
-//
-//        val playVideoButton = findViewById<Button>(R.id.go_play_video)
-//        playVideoButton.setOnClickListener {
-//            val intent = Intent(this, PlayVideoActivity::class.java)
-//            startActivity(intent)
-//        }
+
+        val displayVideoButoon = findViewById<Button>(R.id.go_display_video)
+        displayVideoButoon.setOnClickListener {
+            val intent = Intent(this, DisplayVideoActivity::class.java)
+            startActivity(intent)
+        }
 
     }
 
