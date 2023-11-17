@@ -61,8 +61,18 @@ public:
     return 0;
   }
   SourceState getState() override { return state_; }
-  int64_t getDuration() override { return 0; }
-  int64_t getCurrentPosition() override { return 0; }
+  int64_t getDuration() override {
+    if (decoder_) {
+      return decoder_->getMediaFileInfo().duration;
+    }
+    return 0;
+  }
+  int64_t getCurrentPosition() override {
+    if (decoder_) {
+      return decoder_->getPosition();
+    }
+    return 0;
+  }
   std::shared_ptr<Frame> dequeueFrame() override {
     std::shared_ptr<Frame> f = nullptr;
     frame_queue_->try_pop(f);
