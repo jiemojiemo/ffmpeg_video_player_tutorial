@@ -86,8 +86,15 @@ private:
     }
 
     SDL_GL_SetSwapInterval(1);
+    if(parameters.pixel_format != AVPixelFormat::AV_PIX_FMT_YUV420P){
+      LOGE("only support AV_PIX_FMT_YUV420P");
+      return -1;
+    }
+
+    // TODO: support more pixel format
+    auto sdl2_format = SDL_PIXELFORMAT_IYUV;
     renderer_ = SDL_CreateRenderer(window_, -1, 0);
-    texture_ = SDL_CreateTexture(renderer_, parameters.pixel_format,
+    texture_ = SDL_CreateTexture(renderer_, sdl2_format,
                                  SDL_TEXTUREACCESS_STREAMING, parameters.width,
                                  parameters.height);
 

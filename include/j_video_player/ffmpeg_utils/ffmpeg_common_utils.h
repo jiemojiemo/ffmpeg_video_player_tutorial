@@ -8,17 +8,6 @@
 #include <android/log.h>
 #endif
 
-#define RETURN_IF_ERROR(ret)                                                   \
-  if ((ret) < 0) {                                                             \
-    return (ret);                                                              \
-  }
-
-#define RETURN_IF_ERROR_LOG(ret, ...)                                          \
-  if ((ret) < 0) {                                                             \
-    printf(__VA_ARGS__);                                                       \
-    return (ret);                                                              \
-  }
-
 #if __ANDROID__
 #define TAG "j_video_player"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
@@ -31,5 +20,16 @@
 #define LOGD(...) printf(__VA_ARGS__)
 
 #endif
+
+#define RETURN_IF_ERROR(ret)                                                   \
+  if ((ret) < 0) {                                                             \
+    return (ret);                                                              \
+  }
+
+#define RETURN_IF_ERROR_LOG(ret, ...)                                          \
+  if ((ret) < 0) {                                                             \
+    LOGE(__VA_ARGS__);                                                         \
+    return (ret);                                                              \
+  }
 
 #endif // FFMPEG_VIDEO_PLAYER_FFMPEG_COMMON_UTILS_H

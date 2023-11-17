@@ -14,7 +14,7 @@ public:
   int width{0};
   int height{0};
   int fps{0};
-  int pixel_format{0};
+  int pixel_format{0}; // AVPixelFormat
 };
 
 enum class OutputState { kIdle, kPlaying, kPaused, kStopped };
