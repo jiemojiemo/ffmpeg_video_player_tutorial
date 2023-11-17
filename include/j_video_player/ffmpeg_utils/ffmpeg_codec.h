@@ -53,7 +53,7 @@ public:
   void flush_buffers() { return avcodec_flush_buffers(codec_context_); }
 
   const AVCodec *getCodec() const { return codec_; }
-  AVCodec *getCodec() { return codec_; }
+//  AVCodec *getCodec() { return codec_; }
   const AVCodecContext *getCodecContext() const { return codec_context_; }
   AVCodecContext *getCodecContext() { return codec_context_; }
 
@@ -63,7 +63,7 @@ private:
       avcodec_free_context(&codec_context_);
     }
   }
-  AVCodec *codec_{nullptr};
+  const AVCodec *codec_{nullptr};
   AVCodecContext *codec_context_{nullptr};
 };
 } // namespace ffmpeg_utils

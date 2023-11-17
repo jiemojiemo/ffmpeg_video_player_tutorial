@@ -14,10 +14,10 @@ public:
                std::shared_ptr<ISource> audio_source,
                std::shared_ptr<IVideoOutput> video_output,
                std::shared_ptr<IAudioOutput> audio_output)
-      : video_source_(std::move(video_source)),
-        audio_source_(std::move(audio_source)),
-        video_output_(std::move(video_output)),
-        audio_output_(std::move(audio_output)),
+      : video_source(std::move(video_source)),
+        audio_source(std::move(audio_source)),
+        video_output(std::move(video_output)),
+        audio_output(std::move(audio_output)),
         image_converter_(
             std::make_shared<ffmpeg_utils::FFMPEGImageConverter>()),
         resampler_(std::make_shared<ffmpeg_utils::FFmpegAudioResampler>()),
@@ -26,13 +26,13 @@ public:
   }
 
   int open(const std::string &in_file) {
-    auto ret = video_source_->open(in_file);
+    auto ret = video_source->open(in_file);
     RETURN_IF_ERROR_LOG(ret, "open source failed, exit");
 
-    ret = audio_source_->open(in_file);
+    ret = audio_source->open(in_file);
     RETURN_IF_ERROR_LOG(ret, "open source failed, exit");
 
-    media_file_info_ = video_source_->getMediaFileInfo();
+    media_file_info_ = video_source->getMediaFileInfo();
 
     return 0;
   }
@@ -61,17 +61,17 @@ public:
 
   int play() {
     int ret = 0;
-    if (video_source_) {
-      ret |= video_source_->play();
+    if (video_source) {
+      ret |= video_source->play();
     }
-    if (audio_source_) {
-      ret |= audio_source_->play();
+    if (audio_source) {
+      ret |= audio_source->play();
     }
-    if (video_output_) {
-      ret |= video_output_->play();
+    if (video_output) {
+      ret |= video_output->play();
     }
-    if (audio_output_) {
-      ret |= audio_output_->play();
+    if (audio_output) {
+      ret |= audio_output->play();
     }
 
     if (ret != 0) {
@@ -84,17 +84,17 @@ public:
 
   int stop() {
     int ret = 0;
-    if (video_source_) {
-      ret |= video_source_->stop();
+    if (video_source) {
+      ret |= video_source->stop();
     }
-    if (audio_source_) {
-      ret |= audio_source_->stop();
+    if (audio_source) {
+      ret |= audio_source->stop();
     }
-    if (video_output_) {
-      ret |= video_output_->stop();
+    if (video_output) {
+      ret |= video_output->stop();
     }
-    if (audio_output_) {
-      ret |= audio_output_->stop();
+    if (audio_output) {
+      ret |= audio_output->stop();
     }
     if (ret != 0) {
       LOGE("stop failed, exit");
@@ -103,9 +103,78 @@ public:
     return 0;
   }
 
+  int seek(int64_t timestamp) {
+    int ret = 0;
+    if (video_source) {
+      ret |= video_source->seek(timestamp);
+    }
+    if (audio_source) {
+      ret |= audio_source->seek(timestamp);
+    }
+    if (ret != 0) {
+      LOGE("seek failed, exit");
+      return -1;
+    }
+    return 0;
+  }
+
+  int pause(){
+    int ret = 0;
+    if (video_source) {
+      ret |= video_source->pause();
+    }
+    if (audio_source) {
+      ret |= audio_source->pause();
+    }
+    if (ret != 0) {
+      LOGE("pause failed, exit");
+      return -1;
+    }
+    return 0;
+  }
+
+  int64_t getDuration() const{
+    int64_t v_duration = 0;
+    int64_t a_duration = 0;
+    if (video_source) {
+        v_duration = video_source->getDuration();
+    }
+    if (audio_source) {
+        a_duration = audio_source->getDuration();
+    }
+    return std::max(v_duration, a_duration);
+  }
+
+  int64_t getCurrentPosition(){
+    if(video_source){
+      return video_source->getCurrentPosition();
+    }if(audio_source){
+      return audio_source->getCurrentPosition();
+    }
+    return 0;
+  }
+
+  bool isPlaying(){
+    if(video_source){
+      return video_source->getState() == SourceState::kPlaying;
+    }if(audio_source){
+      return audio_source->getState() == SourceState::kPlaying;
+    }
+    return false;
+  }
+
+  std::shared_ptr<ISource> video_source;
+  std::shared_ptr<ISource> audio_source;
+  std::shared_ptr<IVideoOutput> video_output;
+  std::shared_ptr<IAudioOutput> audio_output;
+
 private:
   int prepareImageConverter(const MediaFileInfo &src_media_file_info,
                             const VideoOutputParameters &v_out_params) {
+    if(video_output == nullptr){
+      return 0;
+    }
+
     int expected_width = v_out_params.width;
     int expected_height = v_out_params.height;
     int expected_pixel_format = v_out_params.pixel_format;
@@ -120,6 +189,10 @@ private:
 
   int prepareAudioResampler(const MediaFileInfo &src_media_file_info,
                             const AudioOutputParameters &a_out_params) {
+    if(audio_output == nullptr){
+      return 0;
+    }
+
     int max_frame_size =
         a_out_params.num_frames_of_buffer * 4 * a_out_params.channels;
     int output_channel_layout =
@@ -136,38 +209,35 @@ private:
   }
 
   int prepareVideoOutput(const VideoOutputParameters &v_out_params) {
-    if (video_output_) {
-      auto ret = video_output_->prepare(v_out_params);
+    if (video_output) {
+      auto ret = video_output->prepare(v_out_params);
       RETURN_IF_ERROR_LOG(ret, "prepare video output failed, exit");
     }
     return 0;
   }
 
   int prepareAudioOutput(const AudioOutputParameters &a_out_params) {
-    if (audio_output_) {
-      auto ret = audio_output_->prepare(a_out_params);
+    if (audio_output) {
+      auto ret = audio_output->prepare(a_out_params);
       RETURN_IF_ERROR_LOG(ret, "prepare audio output failed, exit");
     }
     return 0;
   }
 
   void attachComponents() {
-    if (video_output_) {
-      video_output_->attachSource(video_source_);
-      video_output_->attachImageConverter(image_converter_);
-      video_output_->attachAVSyncClock(clock_);
+    if (video_output) {
+      video_output->attachSource(video_source);
+      video_output->attachImageConverter(image_converter_);
+      video_output->attachAVSyncClock(clock_);
     }
 
-    if (audio_output_) {
-      audio_output_->attachSource(audio_source_);
-      audio_output_->attachResampler(resampler_);
-      audio_output_->attachAVSyncClock(clock_);
+    if (audio_output) {
+      audio_output->attachSource(audio_source);
+      audio_output->attachResampler(resampler_);
+      audio_output->attachAVSyncClock(clock_);
     }
   }
-  std::shared_ptr<ISource> video_source_;
-  std::shared_ptr<ISource> audio_source_;
-  std::shared_ptr<IVideoOutput> video_output_;
-  std::shared_ptr<IAudioOutput> audio_output_;
+
   std::shared_ptr<ffmpeg_utils::FFMPEGImageConverter> image_converter_;
   std::shared_ptr<ffmpeg_utils::FFmpegAudioResampler> resampler_;
   std::shared_ptr<utils::ClockManager> clock_;
