@@ -6,14 +6,28 @@
     android:layout_height="match_parent"
     tools:context=".DisplayVideoActivity">
 
-    <com.example.usesurfaceview.MySurfaceView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/surfaceView_display_video"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+    <RelativeLayout
+        android:id="@+id/surface_root"
         app:layout_constraintTop_toTopOf="parent"
-        />
+        app:layout_constraintBottom_toTopOf="@+id/seek_bar"
+        android:layout_width="match_parent"
+        android:layout_height="0dp">
+        <com.example.usesurfaceview.MySurfaceView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/surfaceView_display_video"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            />
+    </RelativeLayout>
+    <SeekBar
+        app:layout_constraintTop_toBottomOf="@id/surface_root"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:id="@+id/seek_bar"/>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
