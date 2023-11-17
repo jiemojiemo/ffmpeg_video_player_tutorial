@@ -9,7 +9,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 
 class DisplayImageActivity : AppCompatActivity() {
-    private lateinit var mSurfaceView: SurfaceView
+    private lateinit var mSurfaceView: MySurfaceView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,13 +21,15 @@ class DisplayImageActivity : AppCompatActivity() {
         val bitmap = BitmapFactory.decodeResource(resources, R.drawable.test, options)
 
         mSurfaceView = findViewById(R.id.surfaceView_display_image)
+        mSurfaceView.setAspectRation(bitmap.width, bitmap.height)
+
         mSurfaceView.holder.addCallback(object: SurfaceHolder.Callback{
             override fun surfaceCreated(holder: SurfaceHolder) {
                 val surface = holder.surface
                 renderImage(surface, bitmap)
             }
 
-            override fun surfaceChanged(p0: SurfaceHolder, p1: Int, p2: Int, p3: Int) {
+            override fun surfaceChanged(p0: SurfaceHolder, format: Int, width: Int, height: Int) {
             }
 
             override fun surfaceDestroyed(p0: SurfaceHolder) {
