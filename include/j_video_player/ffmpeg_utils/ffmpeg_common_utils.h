@@ -4,6 +4,9 @@
 
 #ifndef FFMPEG_VIDEO_PLAYER_FFMPEG_COMMON_UTILS_H
 #define FFMPEG_VIDEO_PLAYER_FFMPEG_COMMON_UTILS_H
+#if __ANDROID__
+#include <android/log.h>
+#endif
 
 #define RETURN_IF_ERROR(ret)                                                   \
   if ((ret) < 0) {                                                             \
@@ -17,6 +20,10 @@
   }
 
 #if __ANDROID__
+#define TAG "j_video_player"
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, TAG, __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
 
 #else
 #define LOGE(...) printf(__VA_ARGS__)

@@ -11,6 +11,7 @@ Java_com_example_usesurfaceview_DisplayImageActivity_renderImage(JNIEnv *env, jo
     AndroidBitmapInfo info;
     AndroidBitmap_getInfo(env, bitmap, &info);
 
+
     char *data = NULL;
     AndroidBitmap_lockPixels(env, bitmap, (void **) &data);
 
