@@ -29,6 +29,6 @@ TEST_F(ASDL2VideoOutput, prepareFailedIfHeightLessThanZero) {
 TEST_F(ASDL2VideoOutput, CanPrepareWithParameters) {
   parameters.width = 1280;
   parameters.height = 720;
-  parameters.pixel_format = SDL_PIXELFORMAT_IYUV;
+  parameters.pixel_format = AV_PIX_FMT_YUV420P;
   ASSERT_THAT(output.prepare(parameters), Eq(0));
 }

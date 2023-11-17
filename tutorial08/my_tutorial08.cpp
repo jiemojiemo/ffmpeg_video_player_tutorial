@@ -1,10 +1,11 @@
 //
-// Created by user on 5/22/23.
+// Created by user on 11/13/23.
 //
-#include "j_video_player/modules/j_audio_decoder.h"
-#include "j_video_player/modules/j_sdl2_render.h"
-#include "j_video_player/modules/j_video_decoder.h"
-#include <iostream>
+#include "j_video_player/modules/j_ffmpeg_av_decoder.h"
+#include "j_video_player/modules/j_sdl2_audio_output.h"
+#include "j_video_player/modules/j_sdl2_video_output.h"
+#include "j_video_player/modules/j_simple_player.h"
+#include "j_video_player/modules/j_simple_source.h"
 void printHelpMenu() {
   printf("Invalid arguments.\n\n");
   printf("Usage: ./tutorial03 <filename> <max-frames-to-decode>\n\n");
@@ -13,56 +14,63 @@ void printHelpMenu() {
 }
 
 using namespace j_video_player;
+using namespace std::chrono_literals;
 int main(int argc, char *argv[]) {
   if (argc < 2) {
     printHelpMenu();
     return -1;
   }
-
   std::string in_file = argv[1];
 
-  //  auto audio_decoder = std::make_unique<AudioDecoder>(in_file);
-  auto video_decoder = std::make_unique<VideoDecoder>(in_file);
-  auto video_render = std::make_shared<SDL2Render>();
-  auto audio_decoder = std::make_unique<AudioDecoder>(in_file);
-  auto audio_render = std::make_shared<SDL2Render>();
+  auto video_decoder = std::make_shared<FFmpegVideoDecoder>();
+  auto audio_decoder = std::make_shared<FFmpegAudioDecoder>();
+  auto video_source = std::make_shared<SimpleVideoSource>(video_decoder);
+  auto audio_source = std::make_shared<SimpleAudioSource>(audio_decoder);
 
-  // sdl2 window must init in main thread
-  auto width = video_decoder->getCodecContext()->width;
-  auto height = video_decoder->getCodecContext()->height;
-  video_render->initVideoRender(width, height);
+  auto video_output = std::make_shared<SDL2VideoOutput>();
+  auto audio_output = std::make_shared<SDL2AudioOutput>();
 
-  auto clock = std::make_shared<utils::ClockManager>();
-  video_decoder->setAVSyncClock(clock);
-  video_decoder->setRender(video_render);
-  audio_decoder->setAVSyncClock(clock);
-  audio_decoder->setRender(audio_render);
+  auto player =
+      SimplePlayer{video_source, audio_source, video_output, audio_output};
 
-  video_decoder->start();
-  audio_decoder->start();
+  int ret = player.open(in_file);
+  RETURN_IF_ERROR_LOG(ret, "open player failed, exit");
 
+  auto media_file_info = player.getMediaFileInfo();
+
+  VideoOutputParameters video_output_param;
+  video_output_param.width = media_file_info.width;
+  video_output_param.height = media_file_info.height;
+  video_output_param.pixel_format = AVPixelFormat::AV_PIX_FMT_YUV420P;
+
+  AudioOutputParameters audio_output_param;
+  audio_output_param.sample_rate = 44100;
+  audio_output_param.channels = 2;
+  audio_output_param.num_frames_of_buffer = 1024;
+
+  ret = player.prepare(video_output_param, audio_output_param);
+  RETURN_IF_ERROR_LOG(ret, "prepare player failed, exit");
+
+  player.play();
+
+  SDL_Event event;
   auto doSeekRelative = [&](float sec) {
-    auto current_pos = audio_decoder->getCurrentPosition();
-    auto target_pos = current_pos + sec;
-    printf("seek to %f\n", target_pos);
-    audio_decoder->seek(target_pos);
-    video_decoder->seek(target_pos);
+    auto current_pos = player.getCurrentPosition();
+    auto target_pos = current_pos + static_cast<int64_t>(sec * AV_TIME_BASE);
+    LOGE("seek to %lf\n", double(target_pos) / AV_TIME_BASE);
+    player.seek(target_pos);
   };
-
   auto doPauseOrPlaying = [&]() {
-    auto is_playing = audio_decoder->isPlaying();
+    auto is_playing = player.isPlaying();
     if (is_playing) {
-      audio_decoder->pause();
-      video_decoder->pause();
+      player.pause();
     } else {
-      audio_decoder->start();
-      video_decoder->start();
+      player.play();
     }
   };
 
-  SDL_Event event;
   for (;;) {
-    SDL_WaitEvent(&event);
+    SDL_PollEvent(&event);
     switch (event.type) {
     case SDL_KEYDOWN: {
       switch (event.key.keysym.sym) {
@@ -95,9 +103,7 @@ int main(int argc, char *argv[]) {
       break;
     }
     case SDL_QUIT:
-      video_decoder->stop();
-      audio_decoder->stop();
-
+      player.stop();
       return 0;
     }
   }
