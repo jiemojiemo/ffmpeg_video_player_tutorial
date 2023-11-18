@@ -14,7 +14,7 @@ public:
   AudioOutputParameters params;
   std::shared_ptr<IAudioDecoder> decoder =
       std::make_shared<FFmpegAudioDecoder>();
-  std::shared_ptr<ISource> source =
+  std::shared_ptr<SimpleAudioSource> source =
       std::make_shared<SimpleAudioSource>(decoder);
 };
 
@@ -53,7 +53,7 @@ TEST_F(ASDL2AudioOutput, PlayFailedIfPrepareFailed) {
 
 TEST_F(ASDL2AudioOutput, PlayChangeStateToPlaying) {
   output.prepare(params);
-  output.attachSource(source);
+  output.attachAudioSource(source);
   output.play();
 
   ASSERT_THAT(output.getState(), Eq(AudioOutputState::kPlaying));
@@ -61,7 +61,7 @@ TEST_F(ASDL2AudioOutput, PlayChangeStateToPlaying) {
 
 TEST_F(ASDL2AudioOutput, StopChangeStateToStopped) {
   output.prepare(params);
-  output.attachSource(source);
+  output.attachAudioSource(source);
   output.play();
   output.stop();
 

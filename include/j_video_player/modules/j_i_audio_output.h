@@ -26,7 +26,7 @@ public:
   virtual ~IAudioOutput() = default;
 
   virtual int prepare(const AudioOutputParameters &params) = 0;
-  virtual void attachSource(std::shared_ptr<ISource> source) = 0;
+  virtual void attachAudioSource(std::shared_ptr<IAudioSource> source) = 0;
   virtual void attachResampler(
       std::shared_ptr<ffmpeg_utils::FFmpegAudioResampler> resampler) = 0;
   virtual void

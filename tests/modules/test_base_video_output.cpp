@@ -27,7 +27,7 @@ public:
   MockBaseVideoOutput output;
   std::shared_ptr<IVideoDecoder> decoder =
       std::make_shared<FFmpegVideoDecoder>();
-  std::shared_ptr<ISource> source =
+  std::shared_ptr<SimpleVideoSource> source =
       std::make_shared<SimpleVideoSource>(decoder);
   std::shared_ptr<ffmpeg_utils::FFMPEGImageConverter> converter =
       std::make_shared<ffmpeg_utils::FFMPEGImageConverter>();
@@ -38,7 +38,7 @@ TEST_F(ABaseVideoOutput, AttachedSourceIsNullAfterInit) {
 }
 
 TEST_F(ABaseVideoOutput, CanAttachSource) {
-  output.attachSource(source);
+  output.attachVideoSource(source);
 
   ASSERT_THAT(output.getSource(), NotNull());
 }
@@ -64,21 +64,21 @@ TEST_F(ABaseVideoOutput, PlayFailedIfNeverAttachSource) {
 }
 
 TEST_F(ABaseVideoOutput, PlaySuccessIfAttachSource) {
-  output.attachSource(source);
+  output.attachVideoSource(source);
   auto ret = output.play();
 
   ASSERT_THAT(ret, Eq(0));
 }
 
 TEST_F(ABaseVideoOutput, PlayChangeStateToPlaying) {
-  output.attachSource(source);
+  output.attachVideoSource(source);
   output.play();
 
   ASSERT_THAT(output.getState(), Eq(OutputState::kPlaying));
 }
 
 TEST_F(ABaseVideoOutput, StopChangeStateToStopped) {
-  output.attachSource(source);
+  output.attachVideoSource(source);
   output.play();
   output.stop();
 
@@ -86,7 +86,7 @@ TEST_F(ABaseVideoOutput, StopChangeStateToStopped) {
 }
 
 TEST_F(ABaseVideoOutput, PauseChangeStateToPaused) {
-  output.attachSource(source);
+  output.attachVideoSource(source);
   output.play();
   output.pause();
 

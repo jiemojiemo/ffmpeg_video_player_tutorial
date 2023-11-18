@@ -12,10 +12,8 @@
 
 namespace j_video_player {
 
-/**
- * BaseVideoSource is a base class for video source
- */
-template <typename DecoderType> class SimpleSource : public ISource {
+template <typename DecoderType>
+class SimpleSource : public IVideoSource, public IAudioSource {
 public:
   explicit SimpleSource(std::shared_ptr<DecoderType> decoder)
       : decoder_(std::move(decoder)),
@@ -73,15 +71,18 @@ public:
     }
     return 0;
   }
-  std::shared_ptr<Frame> dequeueFrame() override {
-    std::shared_ptr<Frame> f = nullptr;
-    frame_queue_->try_pop(f);
-    return f;
-  }
+  std::shared_ptr<Frame> dequeueVideoFrame() override { return dequeueFrame(); }
+
+  std::shared_ptr<Frame> dequeueAudioFrame() override { return dequeueFrame(); }
 
   int getQueueSize() override { return frame_queue_->size(); }
 
 private:
+  std::shared_ptr<Frame> dequeueFrame() {
+    std::shared_ptr<Frame> f = nullptr;
+    frame_queue_->try_pop(f);
+    return f;
+  }
   void startDecodeThread() {
     decode_thread_ =
         std::make_unique<std::thread>(&SimpleSource::decodingThread, this);
@@ -144,7 +145,7 @@ private:
   std::atomic<int64_t> seek_timestamp_{0};
   using QueueType = utils::WaitableQueue<std::shared_ptr<Frame>>;
   std::unique_ptr<QueueType> frame_queue_ = nullptr;
-  constexpr static int kQueueSize = 10;
+  constexpr static int kQueueSize = 3;
 };
 
 using SimpleVideoSource = SimpleSource<IVideoDecoder>;

@@ -12,7 +12,7 @@ class BaseVideoOutput : public IVideoOutput {
 public:
   ~BaseVideoOutput() override { cleanup(); }
 
-  void attachSource(std::shared_ptr<ISource> source) override {
+  void attachVideoSource(std::shared_ptr<IVideoSource> source) override {
     source_ = std::move(source);
   }
   void attachImageConverter(
@@ -58,7 +58,7 @@ protected:
             LOGW("source is null, can't play. Please attach source first");
             break;
           }
-          auto frame = source_->dequeueFrame();
+          auto frame = source_->dequeueVideoFrame();
           if (frame == nullptr) {
             continue;
           }
@@ -105,7 +105,7 @@ protected:
     }
   }
 
-  std::shared_ptr<ISource> source_;
+  std::shared_ptr<IVideoSource> source_;
   std::shared_ptr<ffmpeg_utils::FFMPEGImageConverter> converter_;
   std::shared_ptr<utils::ClockManager> clock_;
   std::unique_ptr<std::thread> output_thread_;

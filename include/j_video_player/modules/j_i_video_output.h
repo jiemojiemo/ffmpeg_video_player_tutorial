@@ -24,7 +24,7 @@ public:
   virtual ~IVideoOutput() = default;
 
   virtual int prepare(const VideoOutputParameters &parameters) = 0;
-  virtual void attachSource(std::shared_ptr<ISource> source) = 0;
+  virtual void attachVideoSource(std::shared_ptr<IVideoSource> source) = 0;
   virtual void attachImageConverter(
       std::shared_ptr<ffmpeg_utils::FFMPEGImageConverter> converter) = 0;
   virtual void

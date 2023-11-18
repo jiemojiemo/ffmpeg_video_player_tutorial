@@ -10,8 +10,8 @@
 namespace j_video_player {
 class SimplePlayer {
 public:
-  SimplePlayer(std::shared_ptr<ISource> video_source,
-               std::shared_ptr<ISource> audio_source,
+  SimplePlayer(std::shared_ptr<IVideoSource> video_source,
+               std::shared_ptr<IAudioSource> audio_source,
                std::shared_ptr<IVideoOutput> video_output,
                std::shared_ptr<IAudioOutput> audio_output)
       : video_source(std::move(video_source)),
@@ -118,7 +118,7 @@ public:
     return 0;
   }
 
-  int pause(){
+  int pause() {
     int ret = 0;
     if (video_source) {
       ret |= video_source->pause();
@@ -133,45 +133,47 @@ public:
     return 0;
   }
 
-  int64_t getDuration() const{
+  int64_t getDuration() const {
     int64_t v_duration = 0;
     int64_t a_duration = 0;
     if (video_source) {
-        v_duration = video_source->getDuration();
+      v_duration = video_source->getDuration();
     }
     if (audio_source) {
-        a_duration = audio_source->getDuration();
+      a_duration = audio_source->getDuration();
     }
     return std::max(v_duration, a_duration);
   }
 
-  int64_t getCurrentPosition(){
-    if(video_source){
+  int64_t getCurrentPosition() {
+    if (video_source) {
       return video_source->getCurrentPosition();
-    }if(audio_source){
+    }
+    if (audio_source) {
       return audio_source->getCurrentPosition();
     }
     return 0;
   }
 
-  bool isPlaying(){
-    if(video_source){
+  bool isPlaying() {
+    if (video_source) {
       return video_source->getState() == SourceState::kPlaying;
-    }if(audio_source){
+    }
+    if (audio_source) {
       return audio_source->getState() == SourceState::kPlaying;
     }
     return false;
   }
 
-  std::shared_ptr<ISource> video_source;
-  std::shared_ptr<ISource> audio_source;
+  std::shared_ptr<IVideoSource> video_source;
+  std::shared_ptr<IAudioSource> audio_source;
   std::shared_ptr<IVideoOutput> video_output;
   std::shared_ptr<IAudioOutput> audio_output;
 
 private:
   int prepareImageConverter(const MediaFileInfo &src_media_file_info,
                             const VideoOutputParameters &v_out_params) {
-    if(video_output == nullptr){
+    if (video_output == nullptr) {
       return 0;
     }
 
@@ -189,7 +191,7 @@ private:
 
   int prepareAudioResampler(const MediaFileInfo &src_media_file_info,
                             const AudioOutputParameters &a_out_params) {
-    if(audio_output == nullptr){
+    if (audio_output == nullptr) {
       return 0;
     }
 
@@ -226,13 +228,13 @@ private:
 
   void attachComponents() {
     if (video_output) {
-      video_output->attachSource(video_source);
+      video_output->attachVideoSource(video_source);
       video_output->attachImageConverter(image_converter_);
       video_output->attachAVSyncClock(clock_);
     }
 
     if (audio_output) {
-      audio_output->attachSource(audio_source);
+      audio_output->attachAudioSource(audio_source);
       audio_output->attachResampler(resampler_);
       audio_output->attachAVSyncClock(clock_);
     }

@@ -27,7 +27,7 @@ public:
 
     return 0;
   }
-  void attachSource(std::shared_ptr<ISource> source) override {
+  void attachAudioSource(std::shared_ptr<IAudioSource> source) override {
     source_ = std::move(source);
   }
 
@@ -94,7 +94,7 @@ private:
       } else {
         // deque a frame and resample it
         // then push to sample_fifo_
-        auto frame = source_->dequeueFrame();
+        auto frame = source_->dequeueAudioFrame();
         if (frame == nullptr) {
           break;
         } else {
@@ -177,7 +177,7 @@ private:
   SDL_AudioDeviceID audio_device_id_{0};
   SDL_AudioSpec audio_spec_{};
   std::atomic<bool> is_sdl2_audio_system_init{false};
-  std::shared_ptr<ISource> source_;
+  std::shared_ptr<IAudioSource> source_;
   std::atomic<AudioOutputState> state_{AudioOutputState::kIdle};
   std::shared_ptr<ffmpeg_utils::FFmpegAudioResampler> resampler_{nullptr};
   std::shared_ptr<utils::ClockManager> clock_{nullptr};

@@ -113,13 +113,13 @@ TEST_F(ASimpleVideoSource, CanDequeAFrameAfterPlay) {
       break;
   }
 
-  auto f = source->dequeueFrame();
+  auto f = source->dequeueVideoFrame();
 
   ASSERT_THAT(f, NotNull());
 }
 
 TEST_F(ASimpleVideoSource, DequeANullIfThereNoFrame) {
-  auto f = source->dequeueFrame();
+  auto f = source->dequeueVideoFrame();
 
   ASSERT_THAT(f, IsNull());
 }
@@ -145,7 +145,7 @@ TEST_F(ASimpleVideoSource, CanDequeASeekedFrameAfterSeek) {
       break;
   }
 
-  auto f = source->dequeueFrame();
+  auto f = source->dequeueVideoFrame();
 
   ASSERT_THAT(f, NotNull());
   ASSERT_THAT(f->pts(), Eq(1000 * 1000));
