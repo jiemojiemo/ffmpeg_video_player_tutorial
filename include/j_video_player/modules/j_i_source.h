@@ -28,16 +28,19 @@ public:
   virtual SourceState getState() = 0;
   virtual int64_t getDuration() = 0;
   virtual int64_t getCurrentPosition() = 0;
+  virtual std::shared_ptr<Frame> dequeueFrame() = 0;
   virtual int getQueueSize() = 0;
 };
 
 class IVideoSource : public ISource {
 public:
+  std::shared_ptr<Frame> dequeueFrame() override { return dequeueVideoFrame(); }
   virtual std::shared_ptr<Frame> dequeueVideoFrame() = 0;
 };
 
 class IAudioSource : public ISource {
 public:
+  std::shared_ptr<Frame> dequeueFrame() override { return dequeueAudioFrame(); }
   virtual std::shared_ptr<Frame> dequeueAudioFrame() = 0;
 };
 

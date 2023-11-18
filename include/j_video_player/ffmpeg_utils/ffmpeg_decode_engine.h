@@ -280,6 +280,9 @@ private:
   }
 
   void stopThreads() {
+    video_packet_sync_que.notify();
+    audio_packet_sync_que.notify();
+
     if (demux_thread_ != nullptr && demux_thread_->joinable()) {
       demux_thread_->join();
       demux_thread_ = nullptr;

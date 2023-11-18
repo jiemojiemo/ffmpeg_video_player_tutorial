@@ -71,14 +71,14 @@ public:
     }
     return 0;
   }
-  std::shared_ptr<Frame> dequeueVideoFrame() override { return dequeueFrame(); }
+  std::shared_ptr<Frame> dequeueVideoFrame() override { return tryPopAFrame(); }
 
-  std::shared_ptr<Frame> dequeueAudioFrame() override { return dequeueFrame(); }
+  std::shared_ptr<Frame> dequeueAudioFrame() override { return tryPopAFrame(); }
 
   int getQueueSize() override { return frame_queue_->size(); }
 
 private:
-  std::shared_ptr<Frame> dequeueFrame() {
+  std::shared_ptr<Frame> tryPopAFrame() {
     std::shared_ptr<Frame> f = nullptr;
     frame_queue_->try_pop(f);
     return f;
@@ -108,7 +108,7 @@ private:
         } else {
           stop();
         }
-        state_ = SourceState::kPlaying;
+        state_ = SourceState::kPaused;
       } else if (state_ == SourceState::kPaused) {
         wait_event_.wait(-1);
       } else if (state_ == SourceState::kStopped) {

@@ -16,7 +16,10 @@ public:
   explicit WaitablePacketQueue(size_t queue_size = INT16_MAX)
       : queue_size_(queue_size) {}
 
-  ~WaitablePacketQueue() { clear(); }
+  ~WaitablePacketQueue() {
+    clear();
+    notify();
+  }
 
   size_t capacity() const { return queue_size_; }
   size_t size() const {
@@ -82,6 +85,11 @@ public:
 
     total_pkt_size_ = 0;
     has_space_cond_.notify_all();
+  }
+
+  void notify() {
+    has_space_cond_.notify_all();
+    data_cond_.notify_one();
   }
 
   size_t totalPacketSize() const { return total_pkt_size_; }
