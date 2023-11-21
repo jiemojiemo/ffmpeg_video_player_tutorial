@@ -15,12 +15,10 @@ public:
     cleanSDL2();
   }
   int prepare(const VideoOutputParameters &parameters) override {
-    if (parameters.width <= 0 || parameters.height <= 0) {
-      LOGE("invalid width or height");
-      return -1;
-    }
+    auto ret = BaseVideoOutput::prepare(parameters);
+    RETURN_IF_ERROR_LOG(ret, "BaseVideoOutput::prepare failed");
 
-    auto ret = initSDL2System();
+    ret = initSDL2System();
     RETURN_IF_ERROR_LOG(ret, "initSDL2System failed");
 
     ret = initDisplayWindow(parameters);
@@ -86,7 +84,7 @@ private:
     }
 
     SDL_GL_SetSwapInterval(1);
-    if(parameters.pixel_format != AVPixelFormat::AV_PIX_FMT_YUV420P){
+    if (parameters.pixel_format != AVPixelFormat::AV_PIX_FMT_YUV420P) {
       LOGE("only support AV_PIX_FMT_YUV420P");
       return -1;
     }
@@ -94,9 +92,9 @@ private:
     // TODO: support more pixel format
     auto sdl2_format = SDL_PIXELFORMAT_IYUV;
     renderer_ = SDL_CreateRenderer(window_, -1, 0);
-    texture_ = SDL_CreateTexture(renderer_, sdl2_format,
-                                 SDL_TEXTUREACCESS_STREAMING, parameters.width,
-                                 parameters.height);
+    texture_ =
+        SDL_CreateTexture(renderer_, sdl2_format, SDL_TEXTUREACCESS_STREAMING,
+                          parameters.width, parameters.height);
 
     return 0;
   }

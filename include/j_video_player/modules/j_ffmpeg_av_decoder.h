@@ -70,8 +70,6 @@ public:
         continue;
       }
 
-
-
       ret = codec_->sendPacketToCodec(pkt);
       if (ret == AVERROR_EOF) {
         LOGE("sendPacketToCodec AVERROR_EOF\n");
@@ -231,7 +229,7 @@ private:
   std::unique_ptr<ffmpeg_utils::FFmpegCodec> codec_{nullptr};
   int stream_index_{-1};
   AVRational time_base_;
-  int64_t position_{AV_NOPTS_VALUE};
+  std::atomic<int64_t> position_{AV_NOPTS_VALUE};
 };
 
 using FFmpegVideoDecoder = FFmpegAVDecoder<AVMEDIA_TYPE_VIDEO>;

@@ -155,7 +155,7 @@ public:
     return 0;
   }
 
-  bool isPlaying() {
+  bool isPlaying() const {
     if (video_source) {
       return video_source->getState() == SourceState::kPlaying;
     }
