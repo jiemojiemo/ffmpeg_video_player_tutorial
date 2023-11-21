@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".T02DisplayVideoActivity">
+
+    <RelativeLayout
+        android:id="@+id/surface_root"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/seek_bar"
+        android:layout_width="match_parent"
+        android:layout_height="0dp">
+        <com.example.videoplayertutorials.MySurfaceView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/surfaceView_display_video"
+            android:layout_centerInParent="true"
+            />
+    </RelativeLayout>
+    <SeekBar
+        app:layout_constraintTop_toBottomOf="@id/surface_root"
+        app:layout_constraintBottom_toTopOf="@id/button_container"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:id="@+id/seek_bar"/>
+
+    <LinearLayout android:id="@+id/button_container" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" app:layout_constraintTop_toBottomOf="@id/seek_bar" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintLeft_toLeftOf="parent" app:layout_constraintRight_toRightOf="parent">
+
+        <Button
+            android:id="@+id/btn_play"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Play"/>
+
+        <Button
+            android:id="@+id/btn_pause"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Pause"/>
+
+        <Button
+            android:id="@+id/btn_stop"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Stop"/>
+    </LinearLayout>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
