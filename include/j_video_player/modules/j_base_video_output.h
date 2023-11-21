@@ -12,6 +12,15 @@ class BaseVideoOutput : public IVideoOutput {
 public:
   ~BaseVideoOutput() override { cleanup(); }
 
+  int prepare(const VideoOutputParameters &parameters) override {
+    if (parameters.width <= 0 || parameters.height <= 0) {
+      LOGE("invalid width or height");
+      return -1;
+    }
+    parameters_ = parameters;
+    return 0;
+  }
+
   void attachVideoSource(std::shared_ptr<IVideoSource> source) override {
     source_ = std::move(source);
   }
@@ -91,7 +100,8 @@ protected:
       auto real_delay_ms = (int)(av_sync_.computeTargetDelay(*clock_) * 1000);
       std::this_thread::sleep_for(std::chrono::milliseconds(real_delay_ms));
     } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(30));
+      auto delay_ms = parameters_.fps > 0 ? (int)(1000 / parameters_.fps) : 30;
+      std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
     }
   }
 
@@ -111,6 +121,7 @@ protected:
   std::unique_ptr<std::thread> output_thread_;
   std::atomic<OutputState> state_{OutputState::kIdle};
   utils::AVSynchronizer av_sync_;
+  VideoOutputParameters parameters_;
 };
 
 } // namespace j_video_player

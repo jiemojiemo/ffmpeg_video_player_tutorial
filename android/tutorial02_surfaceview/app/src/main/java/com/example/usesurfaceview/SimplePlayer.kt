@@ -4,7 +4,7 @@ import android.view.Surface
 
 class SimplePlayer {
     private var _handel: Long = nativeCreatePlayer()
-
+    private var _isPrepared = false
     companion object{
         init {
             System.loadLibrary("usesurfaceview")
@@ -37,7 +37,13 @@ class SimplePlayer {
     }
 
     fun prepare(): Int{
-        return nativePrepare(_handel)
+        val ret = nativePrepare(_handel)
+        _isPrepared = (ret == 0)
+        return ret;
+    }
+
+    fun isPrepared(): Boolean{
+        return _isPrepared
     }
 
     fun play(): Int{

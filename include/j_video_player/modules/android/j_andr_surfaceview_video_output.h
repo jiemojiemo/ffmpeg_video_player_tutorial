@@ -40,17 +40,21 @@ public:
   }
 
   int prepare(const VideoOutputParameters &parameters) override {
+    auto ret = BaseVideoOutput::prepare(parameters);
+    RETURN_IF_ERROR_LOG(ret, "BaseVideoOutput::prepare failed");
+
     if(nativeWindow_ == nullptr) {
       LOGE("nativeWindow_ is null, can't prepare");
       return -1;
     }
+
     if(parameters.pixel_format != AV_PIX_FMT_RGBA) {
       LOGE("Only support AV_PIX_FMT_RGBA pixel format");
       return -1;
     }
 
     auto output_pixel_format = WINDOW_FORMAT_RGBA_8888;
-    int ret = ANativeWindow_setBuffersGeometry(nativeWindow_,
+    ret = ANativeWindow_setBuffersGeometry(nativeWindow_,
                                                parameters.width,
                                                parameters.height,
                                                output_pixel_format);
