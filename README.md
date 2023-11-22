@@ -21,6 +21,7 @@
 ```shell
 git clone https://github.com/jiemojiemo/ffmpeg_video_player_tutorial.git
 cd ffmpeg_video_player_tutorial
+git submodule update --init --recursive 
 ```
 
 ## Mac
