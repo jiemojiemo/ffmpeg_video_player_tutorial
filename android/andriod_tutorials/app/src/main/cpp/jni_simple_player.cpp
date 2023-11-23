@@ -74,9 +74,9 @@ Java_com_example_videoplayertutorials_SimplePlayer_nativeAttachSurface(JNIEnv *e
 }
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_example_videoplayertutorials_SimplePlayer_nativePrepare(JNIEnv *env,
-                                                           jobject thiz,
-                                                           jlong _handel) {
+Java_com_example_videoplayertutorials_SimplePlayer_nativePrepareForOutput(JNIEnv *env,
+                                                                          jobject thiz,
+                                                                          jlong _handel) {
   auto *player = reinterpret_cast<SimplePlayer *>(_handel);
   auto media_file_info = player->getMediaFileInfo();
 
@@ -85,7 +85,7 @@ Java_com_example_videoplayertutorials_SimplePlayer_nativePrepare(JNIEnv *env,
   video_output_param.height = media_file_info.height;
   video_output_param.pixel_format = AVPixelFormat::AV_PIX_FMT_RGBA;
 
-  return player->prepare(video_output_param, {});
+  return player->prepareForOutput(video_output_param, {});
 }
 extern "C"
 JNIEXPORT jint JNICALL
@@ -116,4 +116,12 @@ JNIEXPORT jint JNICALL
 Java_com_example_videoplayertutorials_SimplePlayer_nativePause(JNIEnv *env, jobject thiz, jlong _handel) {
   auto *player = reinterpret_cast<SimplePlayer *>(_handel);
   return player->pause();
+}
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_example_videoplayertutorials_SimplePlayer_nativeIsStopped(JNIEnv *env,
+                                                                   jobject thiz,
+                                                                   jlong _handel) {
+    auto *player = reinterpret_cast<SimplePlayer *>(_handel);
+    return player->isStopped();
 }

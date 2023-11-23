@@ -41,8 +41,8 @@ public:
 
   MediaFileInfo getMediaFileInfo() { return media_file_info_; }
 
-  int prepare(const VideoOutputParameters &v_out_params,
-              const AudioOutputParameters &a_out_params) {
+  int prepareForOutput(const VideoOutputParameters &v_out_params,
+                       const AudioOutputParameters &a_out_params) {
 
     int ret = prepareImageConverter(media_file_info_, v_out_params);
     RETURN_IF_ERROR(ret);
@@ -161,6 +161,16 @@ public:
     }
     if (audio_source) {
       return audio_source->getState() == SourceState::kPlaying;
+    }
+    return false;
+  }
+
+  bool isStopped() const {
+    if (video_source) {
+      return video_source->getState() == SourceState::kStopped || video_source->getState() == SourceState::kIdle;
+    }
+    if (audio_source) {
+      return audio_source->getState() == SourceState::kStopped || audio_source->getState() == SourceState::kIdle;
     }
     return false;
   }

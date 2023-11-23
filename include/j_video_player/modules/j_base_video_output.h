@@ -49,6 +49,7 @@ public:
   }
   int stop() override {
     state_ = OutputState::kStopped;
+    stopOutputThread();
     return 0;
   }
 
@@ -82,9 +83,16 @@ protected:
       }
     });
   }
+  void stopOutputThread() {
+    if (output_thread_ != nullptr && output_thread_->joinable()) {
+      output_thread_->join();
+      output_thread_ = nullptr;
+      LOGD("video output thread stopped\n");
+    }
+  }
 
   bool isThreadRunning() const {
-    return output_thread_ != nullptr && output_thread_->joinable();
+    return output_thread_ != nullptr;
   }
 
   std::shared_ptr<Frame> convertFrame(std::shared_ptr<Frame> frame) {
@@ -108,11 +116,7 @@ protected:
   void cleanup() {
     state_ = OutputState::kIdle;
 
-    if (output_thread_ != nullptr && output_thread_->joinable()) {
-      output_thread_->join();
-      output_thread_ = nullptr;
-      LOGD("video output thread stopped\n");
-    }
+    stopOutputThread();
   }
 
   std::shared_ptr<IVideoSource> source_;

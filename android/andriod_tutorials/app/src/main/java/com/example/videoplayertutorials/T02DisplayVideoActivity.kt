@@ -38,24 +38,24 @@ class T02DisplayVideoActivity : AppCompatActivity() {
 
         val playButton = findViewById<Button>(R.id.btn_play)
         playButton.setOnClickListener {
-            if(!mPlayer.isPrepared()){
+            if(mPlayer.isStopped()){
                 val ret = mPlayer.open(videoPath.absolutePath)
                 if(!ret){
                     Log.e("DisplayVideoActivity", "open video failed")
                     return@setOnClickListener
                 }
+            }
 
+            if(!mPlayer.isPrepared()){
                 val width = mPlayer.getMediaFileWidth()
                 val height = mPlayer.getMediaFileHeight()
                 mSurfaceView.setAspectRation(width, height)
 
                 mPlayer.attachSurface(mSurfaceView.holder.surface)
-                mPlayer.prepare()
+                mPlayer.prepareForOutput()
             }
 
-            if(mPlayer.isPrepared()){
-                mPlayer.play()
-            }
+            mPlayer.play()
         }
 
         val stopButton = findViewById<Button>(R.id.btn_stop)

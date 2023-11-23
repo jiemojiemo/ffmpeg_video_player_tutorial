@@ -36,14 +36,18 @@ class SimplePlayer {
         return nativeAttachSurface(_handel, surface)
     }
 
-    fun prepare(): Int{
-        val ret = nativePrepare(_handel)
+    fun prepareForOutput(): Int{
+        val ret = nativePrepareForOutput(_handel)
         _isPrepared = (ret == 0)
         return ret;
     }
 
     fun isPrepared(): Boolean{
         return _isPrepared
+    }
+
+    fun isStopped(): Boolean{
+        return nativeIsStopped(_handel)
     }
 
     fun play(): Int{
@@ -69,9 +73,10 @@ class SimplePlayer {
     private external fun nativeGetMediaFileWidth(player: Long): Int
     private external fun nativeGetMediaFileHeight(player: Long): Int
     private external fun nativeAttachSurface(_handel: Long, surface: Surface)
-    private external fun nativePrepare(_handel: Long): Int
+    private external fun nativePrepareForOutput(_handel: Long): Int
     private external fun nativePlay(_handel: Long): Int
     private external fun nativeStop(_handel: Long): Int
+    private external fun nativeIsStopped(_handel: Long): Boolean
     private external fun nativeSeek(_handel: Long, progress: Double): Int
     private external fun nativePause(_handel: Long): Int
 }

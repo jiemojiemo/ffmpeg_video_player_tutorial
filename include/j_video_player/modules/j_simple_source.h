@@ -12,7 +12,7 @@
 
 namespace j_video_player {
 
-template <typename DecoderType>
+template<typename DecoderType>
 class SimpleSource : public IVideoSource, public IAudioSource {
 public:
   explicit SimpleSource(std::shared_ptr<DecoderType> decoder)
@@ -47,6 +47,8 @@ public:
   }
   int stop() override {
     state_ = SourceState::kStopped;
+    stopDecodeThread();
+    closeDecoder();
     return 0;
   }
   int seek(int64_t timestamp) override {
@@ -88,6 +90,21 @@ private:
         std::make_unique<std::thread>(&SimpleSource::decodingThread, this);
   }
 
+  void stopDecodeThread() {
+    if (decode_thread_ && decode_thread_->joinable()) {
+      frame_queue_->flush();
+      wait_event_.signal();
+      decode_thread_->join();
+      decode_thread_ = nullptr;
+    }
+  }
+
+  void closeDecoder() {
+    if (decoder_) {
+      decoder_->close();
+    }
+  }
+
   void decodingThread() {
     if (!isValid()) {
       LOGE("decoder is not valid, can not start decode thread");
@@ -114,7 +131,7 @@ private:
       } else if (state_ == SourceState::kStopped) {
         break;
       } else if (state_ == SourceState::kIdle) {
-        wait_event_.wait(-1);
+        break;
       }
     }
   }
@@ -134,7 +151,7 @@ private:
   }
 
   bool isThreadRunning() {
-    return decode_thread_ != nullptr && decode_thread_->joinable();
+    return decode_thread_ != nullptr;
   }
 
   bool isValid() { return decoder_ && decoder_->isValid(); }
