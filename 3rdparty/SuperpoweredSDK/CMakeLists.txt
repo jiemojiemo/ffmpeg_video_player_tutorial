@@ -1,0 +1,5 @@
+set(lib_name "superpowered")
+if (ANDROID)
+    add_library(${lib_name} SuperpoweredAndroidAudioIO.cpp)
+    target_include_directories(${lib_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/)
+endif ()

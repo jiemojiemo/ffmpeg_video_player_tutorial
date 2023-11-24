@@ -8,7 +8,7 @@ import android.widget.Button
 import android.widget.SeekBar
 import java.io.File
 
-class T02DisplayVideoActivity : AppCompatActivity() {
+class DisplayVideoActivity : AppCompatActivity() {
     private lateinit var mSurfaceView: MySurfaceView
     private var mPlayer = SimplePlayer()
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +73,13 @@ class T02DisplayVideoActivity : AppCompatActivity() {
             override fun onProgressChanged(p0: SeekBar?, progress: Int, fromUser: Boolean) {
                 val p = progress.toDouble() / 100
                 Log.e("DisplayVideoActivity", "progress: $p")
+                if(mPlayer.isStopped()){
+                    val ret = mPlayer.open(videoPath.absolutePath)
+                    if(!ret){
+                        Log.e("DisplayVideoActivity", "open video failed")
+                        return
+                    }
+                }
                 mPlayer.seek(p)
             }
 

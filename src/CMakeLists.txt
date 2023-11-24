@@ -20,6 +20,6 @@ if (APPLE AND ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 elseif (ANDROID)
     find_library(log-lib log)
 
-    target_link_libraries(j_video_player INTERFACE ffmpeg_libs Ring-Buffer ${log-lib})
+    target_link_libraries(j_video_player INTERFACE ffmpeg_libs Ring-Buffer ${log-lib} superpowered)
     target_include_directories(j_video_player INTERFACE ${include_dir})
 endif ()

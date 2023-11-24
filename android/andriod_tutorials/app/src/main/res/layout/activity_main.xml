@@ -20,6 +20,12 @@
             android:layout_height="wrap_content"
             android:text="tutorial02" />
 
+        <Button
+            android:id="@+id/tutorial03"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="tutorial03" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

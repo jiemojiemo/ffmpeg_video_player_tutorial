@@ -18,7 +18,7 @@ class Tutorial02 : AppCompatActivity() {
 
         val displayVideoButoon = findViewById<Button>(R.id.go_display_video)
         displayVideoButoon.setOnClickListener {
-            val intent = Intent(this, T02DisplayVideoActivity::class.java)
+            val intent = Intent(this, DisplayVideoActivity::class.java)
             startActivity(intent)
         }
     }

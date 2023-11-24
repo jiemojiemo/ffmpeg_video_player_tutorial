@@ -84,17 +84,18 @@ public:
 
   int stop() {
     int ret = 0;
-    if (video_source) {
-      ret |= video_source->stop();
-    }
-    if (audio_source) {
-      ret |= audio_source->stop();
-    }
     if (video_output) {
       ret |= video_output->stop();
     }
     if (audio_output) {
       ret |= audio_output->stop();
+    }
+
+    if (video_source) {
+      ret |= video_source->stop();
+    }
+    if (audio_source) {
+      ret |= audio_source->stop();
     }
     if (ret != 0) {
       LOGE("stop failed, exit");
@@ -105,6 +106,13 @@ public:
 
   int seek(int64_t timestamp) {
     int ret = 0;
+    if (video_output) {
+      ret |= video_output->play();
+    }
+    if (audio_output) {
+      // seek with no audio output
+      ret |= audio_output->stop();
+    }
     if (video_source) {
       ret |= video_source->seek(timestamp);
     }
@@ -120,6 +128,12 @@ public:
 
   int pause() {
     int ret = 0;
+    if (video_output) {
+      ret |= video_output->stop();
+    }
+    if (audio_output) {
+      ret |= audio_output->stop();
+    }
     if (video_source) {
       ret |= video_source->pause();
     }
@@ -167,10 +181,12 @@ public:
 
   bool isStopped() const {
     if (video_source) {
-      return video_source->getState() == SourceState::kStopped || video_source->getState() == SourceState::kIdle;
+      return video_source->getState() == SourceState::kStopped ||
+             video_source->getState() == SourceState::kIdle;
     }
     if (audio_source) {
-      return audio_source->getState() == SourceState::kStopped || audio_source->getState() == SourceState::kIdle;
+      return audio_source->getState() == SourceState::kStopped ||
+             audio_source->getState() == SourceState::kIdle;
     }
     return false;
   }

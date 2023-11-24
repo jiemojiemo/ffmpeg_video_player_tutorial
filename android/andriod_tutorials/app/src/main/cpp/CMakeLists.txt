@@ -25,4 +25,5 @@ target_link_libraries(
         j_video_player
         android
         jnigraphics
+        OpenSLES
 )

@@ -12,7 +12,7 @@
 
 namespace j_video_player {
 
-template<typename DecoderType>
+template <typename DecoderType>
 class SimpleSource : public IVideoSource, public IAudioSource {
 public:
   explicit SimpleSource(std::shared_ptr<DecoderType> decoder)
@@ -62,7 +62,7 @@ public:
   }
   SourceState getState() override { return state_; }
   int64_t getDuration() override {
-    if (decoder_) {
+    if (decoder_ && decoder_->isValid()) {
       return decoder_->getMediaFileInfo().duration;
     }
     return 0;
@@ -116,19 +116,21 @@ private:
         if (frame) {
           frame_queue_->wait_and_push(std::move(frame));
         } else {
-          stop();
+          state_ = SourceState::kStopped;
         }
       } else if (state_ == SourceState::kSeeking) {
+        frame_queue_->flush();
         auto frame = decoder_->seekFramePrecise(seek_timestamp_);
         if (frame) {
           frame_queue_->wait_and_push(std::move(frame));
+          state_ = SourceState::kPaused;
         } else {
-          stop();
+          state_ = SourceState::kStopped;
         }
-        state_ = SourceState::kPaused;
       } else if (state_ == SourceState::kPaused) {
         wait_event_.wait(-1);
       } else if (state_ == SourceState::kStopped) {
+        frame_queue_->flush();
         break;
       } else if (state_ == SourceState::kIdle) {
         break;
@@ -150,9 +152,7 @@ private:
     }
   }
 
-  bool isThreadRunning() {
-    return decode_thread_ != nullptr;
-  }
+  bool isThreadRunning() { return decode_thread_ != nullptr; }
 
   bool isValid() { return decoder_ && decoder_->isValid(); }
   std::shared_ptr<DecoderType> decoder_;

@@ -131,6 +131,11 @@ public:
   int64_t getPosition() override { return position_; }
 
   MediaFileInfo getMediaFileInfo() override {
+    if(!isValid()) {
+      LOGE("getMediaFileInfo failed, decoder is invalid");
+      return {};
+    }
+
     MediaFileInfo info;
     info.file_path = demux_->getFormatContext()->url;
     info.width = codec_->getCodecContext()->width;

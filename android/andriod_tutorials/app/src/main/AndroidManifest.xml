@@ -12,7 +12,10 @@
         android:theme="@style/Theme.VideoPlayerTutorials"
         tools:targetApi="31">
         <activity
-            android:name=".T02DisplayVideoActivity"
+            android:name=".Tutorial03"
+            android:exported="false" />
+        <activity
+            android:name=".DisplayVideoActivity"
             android:exported="false" />
         <activity
             android:name=".T02DisplayImageActivity"

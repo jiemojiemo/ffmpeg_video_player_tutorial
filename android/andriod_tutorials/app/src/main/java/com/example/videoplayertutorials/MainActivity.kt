@@ -29,6 +29,12 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, Tutorial02::class.java)
             startActivity(intent)
         }
+
+        val tutorial03Btn = findViewById<Button>(R.id.tutorial03)
+        tutorial03Btn.setOnClickListener {
+            val intent = Intent(this, DisplayVideoActivity::class.java)
+            startActivity(intent)
+        }
     }
 
     private fun requestPermissions() {
