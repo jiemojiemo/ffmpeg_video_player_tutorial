@@ -23,7 +23,7 @@ Java_com_example_videoplayertutorials_T02DisplayImageActivity_renderImage(JNIEnv
 
   ANativeWindow *nativeWindow = ANativeWindow_fromSurface(env, surface);
   ANativeWindow_setBuffersGeometry(nativeWindow, info.width, info.height,
-                                   WINDOW_FORMAT_RGBA_8888);
+                                   AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
 
   ANativeWindow_Buffer buffer;
   ANativeWindow_lock(nativeWindow, &buffer, NULL);

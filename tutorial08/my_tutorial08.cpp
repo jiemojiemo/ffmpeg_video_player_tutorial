@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
   audio_output_param.channels = 2;
   audio_output_param.num_frames_of_buffer = 1024;
 
-  ret = player.prepare(video_output_param, audio_output_param);
+  ret = player.prepareForOutput(video_output_param, audio_output_param);
   RETURN_IF_ERROR_LOG(ret, "prepare player failed, exit");
 
   player.play();
