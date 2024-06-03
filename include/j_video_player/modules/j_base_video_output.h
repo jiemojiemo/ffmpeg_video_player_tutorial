@@ -91,9 +91,7 @@ protected:
     }
   }
 
-  bool isThreadRunning() const {
-    return output_thread_ != nullptr;
-  }
+  bool isThreadRunning() const { return output_thread_ != nullptr; }
 
   std::shared_ptr<Frame> convertFrame(std::shared_ptr<Frame> frame) {
     if (converter_) {

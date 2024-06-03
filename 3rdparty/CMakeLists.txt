@@ -4,5 +4,6 @@ target_include_directories(Ring-Buffer INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/Rin
 add_library(farbot INTERFACE)
 target_include_directories(farbot INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/farbot/include)
 
+add_subdirectory(aloop)
 add_subdirectory(ffmpeg)
 add_subdirectory(SuperpoweredSDK)

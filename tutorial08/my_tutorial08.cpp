@@ -24,8 +24,12 @@ int main(int argc, char *argv[]) {
 
   auto video_decoder = std::make_shared<FFmpegVideoDecoder>();
   auto audio_decoder = std::make_shared<FFmpegAudioDecoder>();
-  auto video_source = std::make_shared<SimpleVideoSource>(video_decoder);
-  auto audio_source = std::make_shared<SimpleAudioSource>(audio_decoder);
+
+  auto video_source = std::make_shared<SimpleVideoSource>();
+  video_source->prepare(video_decoder);
+
+  auto audio_source = std::make_shared<SimpleAudioSource>();
+  audio_source->prepare(audio_decoder);
 
   auto video_output = std::make_shared<SDL2VideoOutput>();
   auto audio_output = std::make_shared<SDL2AudioOutput>();

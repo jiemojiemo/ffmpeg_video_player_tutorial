@@ -10,12 +10,13 @@ using namespace j_video_player;
 class ASimpleVideoSource : public Test {
 public:
   void SetUp() override {
-    source = std::make_unique<SimpleVideoSource>(decoder);
+    source = std::make_shared<SimpleVideoSource>();
+    source->prepare(decoder);
   }
 
   std::shared_ptr<FFmpegVideoDecoder> decoder =
       std::make_shared<FFmpegVideoDecoder>();
-  std::unique_ptr<SimpleVideoSource> source = nullptr;
+  std::shared_ptr<SimpleVideoSource> source = nullptr;
   std::string url =
       "/Users/user/Documents/work/测试视频/video_1280x720_30fps_30sec.mp4";
 };
@@ -25,21 +26,19 @@ TEST_F(ASimpleVideoSource, CreateWithADecoder) {
 }
 
 TEST_F(ASimpleVideoSource, CanOpenAFile) {
-  source = std::make_unique<SimpleVideoSource>(decoder);
   int ret = source->open(url);
 
   ASSERT_THAT(ret, Eq(0));
 }
 
 TEST_F(ASimpleVideoSource, OpenFailedIfURLIsInvalid) {
-  source = std::make_unique<SimpleVideoSource>(decoder);
   int ret = source->open("file://test.mp4");
 
   ASSERT_THAT(ret, Not(0));
 }
 
 TEST_F(ASimpleVideoSource, OpenFailedIfDecoderIsNull) {
-  source = std::make_unique<SimpleVideoSource>(nullptr);
+  source->prepare(nullptr);
   int ret = source->open(url);
 
   ASSERT_THAT(ret, Not(0));
