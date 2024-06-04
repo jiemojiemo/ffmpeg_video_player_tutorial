@@ -24,11 +24,12 @@ public:
 
 class ABaseVideoOutput : public Test {
 public:
+  void SetUp() override { source->prepare(decoder); }
   MockBaseVideoOutput output;
   std::shared_ptr<IVideoDecoder> decoder =
       std::make_shared<FFmpegVideoDecoder>();
   std::shared_ptr<SimpleVideoSource> source =
-      std::make_shared<SimpleVideoSource>(decoder);
+      std::make_shared<SimpleVideoSource>();
   std::shared_ptr<ffmpeg_utils::FFMPEGImageConverter> converter =
       std::make_shared<ffmpeg_utils::FFMPEGImageConverter>();
 };

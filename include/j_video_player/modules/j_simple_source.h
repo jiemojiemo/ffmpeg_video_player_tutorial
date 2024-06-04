@@ -46,12 +46,7 @@ public:
     msg->setString("file_path", file_path);
 
     auto rep = aloop::AMessage::createNull();
-    if (msg->postAndAwaitResponse(&rep) == aloop::OK) {
-      int extra = 0;
-      if (rep->findInt32("extra", &extra)) {
-        printf("response %d\n", extra);
-      }
-    }
+    msg->postAndAwaitResponse(&rep);
 
     int ret = -1;
     rep->findInt32("ret", &ret);

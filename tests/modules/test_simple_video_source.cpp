@@ -21,10 +21,6 @@ public:
       "/Users/user/Documents/work/测试视频/video_1280x720_30fps_30sec.mp4";
 };
 
-TEST_F(ASimpleVideoSource, CreateWithADecoder) {
-  source = std::make_unique<SimpleVideoSource>(decoder);
-}
-
 TEST_F(ASimpleVideoSource, CanOpenAFile) {
   int ret = source->open(url);
 

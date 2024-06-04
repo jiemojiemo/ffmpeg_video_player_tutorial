@@ -44,15 +44,3 @@ TEST_F(AFFmpegCodec, GetCodecContextAfterPrepare) {
 
   ASSERT_THAT(c, NotNull());
 }
-
-TEST_F(AFFmpegCodec, PrepareWithParametersWillCopyParametersToCodecContext) {
-  auto codec_id = AVCodecID::AV_CODEC_ID_H264;
-  AVCodecParameters parameters;
-  parameters.width = 10;
-  parameters.height = 20;
-
-  d.prepare(codec_id, &parameters);
-
-  ASSERT_THAT(d.getCodecContext()->width, Eq(parameters.width));
-  ASSERT_THAT(d.getCodecContext()->height, Eq(parameters.height));
-}

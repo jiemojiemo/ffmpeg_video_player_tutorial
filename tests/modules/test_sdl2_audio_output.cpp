@@ -10,12 +10,13 @@ using namespace testing;
 using namespace j_video_player;
 class ASDL2AudioOutput : public Test {
 public:
+  void SetUp() override { source->prepare(decoder); }
   SDL2AudioOutput output;
   AudioOutputParameters params;
   std::shared_ptr<IAudioDecoder> decoder =
       std::make_shared<FFmpegAudioDecoder>();
   std::shared_ptr<SimpleAudioSource> source =
-      std::make_shared<SimpleAudioSource>(decoder);
+      std::make_shared<SimpleAudioSource>();
 };
 
 TEST_F(ASDL2AudioOutput, prepareFailedIfParamInvalid) {
